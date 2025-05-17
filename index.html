@@ -2,44 +2,75 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adventskalender</title>
+    <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="kalender"></div>
+    <div class="header">
+        <div class="wreath"></div>
+        <h1>🎄 Digitaler Adventskalender 2025 🎄</h1>
+        <p class="subtitle">Jeden Tag ein neues, interaktives Weihnachts-Highlight</p>
+    </div>
+    <div id="snow"></div>
+    <main>
+        <section id="calendar" class="calendar"></section>
+        <p class="footer-hint">Türchen öffnen sich passend zum Tag. <span id="debugHint"></span></p>
+    </main>
+    <footer>
+        <p>&copy; 2025 Dein Adventskalender &mdash; Mit Liebe und Chad Gepetti ❤️</p>
+    </footer>
     <script>
-        // Konfiguration
-        const DEBUG_MODE_ENDE = new Date('2024-11-28T23:59:59'); // Bis inkl. 28.11. alles offen
-        const ANZAHL_TUERCHEN = 24;
-        const HEUTE = new Date();
-        const DEZEMBER = 11; // JavaScript: 0 = Jan, 11 = Dez
+        // --------------------
+        // Adventskalender-Logik
+        // --------------------
+        const calendar = document.getElementById('calendar');
+        const debugHint = document.getElementById('debugHint');
+        const today = new Date();
+        const currentMonth = today.getMonth() + 1;
+        const currentDate = today.getDate();
 
-        function tuerchenOffen(i) {
-            if (HEUTE <= DEBUG_MODE_ENDE) return true;
-            // Türchen i ab i. Dezember offen
-            let tuerDatum = new Date(HEUTE.getFullYear(), DEZEMBER, i); // 1-based
-            return HEUTE >= tuerDatum;
-        }
+        // Debugging-Phase bis 28. November
+        const DEBUG = (currentMonth < 12 && (currentMonth < 11 || currentDate <= 28));
+        if(DEBUG) debugHint.textContent = "Debug-Modus: Alle Türchen sind offen.";
 
-        function tuerchenText(i) {
-            return i < 10 ? "0" + i : i.toString();
-        }
+        function pad(n) { return n < 10 ? '0' + n : n; }
 
-        // Kalender generieren
-        let kalender = document.getElementById('kalender');
-        kalender.classList.add("kalender-grid");
-        for (let i = 1; i <= ANZAHL_TUERCHEN; i++) {
-            let offen = tuerchenOffen(i);
-            let div = document.createElement("div");
-            div.className = offen ? "tuer offen" : "tuer";
-            div.innerHTML = `<span>${tuerchenText(i)}</span>`;
-            if (offen) {
-                div.onclick = () => window.location.href = `tage/${tuerchenText(i)}/index.html`;
-            } else {
-                div.title = "Dieses Türchen ist noch verschlossen!";
+        for (let day = 1; day <= 24; day++) {
+            // Reguläre Öffnungslogik: ab 29.11. ist Tür erst ab jeweiligem Tag auf
+            let open = DEBUG || (currentMonth === 12 && currentDate >= day);
+
+            const door = document.createElement('div');
+            door.className = 'door' + (open ? ' open' : ' closed');
+            door.innerHTML = `
+                <span class="door-number">${day}</span>
+                <span class="door-star">${open ? '★' : '❄️'}</span>
+            `;
+
+            if (open) {
+                door.addEventListener('click', () => {
+                    window.location.href = `tage/${pad(day)}/index.html`;
+                });
             }
-            kalender.appendChild(div);
+
+            calendar.appendChild(door);
         }
+
+        // Schneeflocken-Animation (dezent, performant)
+        function createSnow() {
+            const snow = document.getElementById('snow');
+            for(let i = 0; i < 50; i++) {
+                let flake = document.createElement('div');
+                flake.className = 'snowflake';
+                flake.style.left = (Math.random() * 100) + 'vw';
+                flake.style.animationDuration = (3 + Math.random() * 4) + 's';
+                flake.style.fontSize = (10 + Math.random() * 16) + 'px';
+                flake.textContent = '❄️';
+                snow.appendChild(flake);
+            }
+        }
+        createSnow();
     </script>
 </body>
 </html>
