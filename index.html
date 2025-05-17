@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Adventskalender</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="kalender"></div>
+    <script>
+        // Konfiguration
+        const DEBUG_MODE_ENDE = new Date('2024-11-28T23:59:59'); // Bis inkl. 28.11. alles offen
+        const ANZAHL_TUERCHEN = 24;
+        const HEUTE = new Date();
+        const DEZEMBER = 11; // JavaScript: 0 = Jan, 11 = Dez
+
+        function tuerchenOffen(i) {
+            if (HEUTE <= DEBUG_MODE_ENDE) return true;
+            // Türchen i ab i. Dezember offen
+            let tuerDatum = new Date(HEUTE.getFullYear(), DEZEMBER, i); // 1-based
+            return HEUTE >= tuerDatum;
+        }
+
+        function tuerchenText(i) {
+            return i < 10 ? "0" + i : i.toString();
+        }
+
+        // Kalender generieren
+        let kalender = document.getElementById('kalender');
+        kalender.classList.add("kalender-grid");
+        for (let i = 1; i <= ANZAHL_TUERCHEN; i++) {
+            let offen = tuerchenOffen(i);
+            let div = document.createElement("div");
+            div.className = offen ? "tuer offen" : "tuer";
+            div.innerHTML = `<span>${tuerchenText(i)}</span>`;
+            if (offen) {
+                div.onclick = () => window.location.href = `tage/${tuerchenText(i)}/index.html`;
+            } else {
+                div.title = "Dieses Türchen ist noch verschlossen!";
+            }
+            kalender.appendChild(div);
+        }
+    </script>
+</body>
+</html>
