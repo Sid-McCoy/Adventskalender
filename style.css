@@ -1,46 +1,168 @@
 body {
-    background: #1a1a1a;
-    color: #fff;
-    font-family: 'Segoe UI', Arial, sans-serif;
+    margin: 0;
     min-height: 100vh;
+    background: linear-gradient(140deg, #f4f8fb 0%, #c2e9fb 100%);
+    font-family: 'Roboto', Arial, sans-serif;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
-.kalender-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 70px);
-    grid-template-rows: repeat(4, 70px);
-    gap: 15px;
-    background: #2e4c2f;
-    padding: 30px;
-    border-radius: 24px;
-    box-shadow: 0 4px 24px #0009;
-}
-
-.tuer {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #388d47;
-    border-radius: 12px;
-    font-size: 2em;
-    font-weight: bold;
-    cursor: not-allowed;
-    transition: background 0.2s, box-shadow 0.2s;
+.header {
+    text-align: center;
+    margin-top: 40px;
     position: relative;
-    user-select: none;
-    box-shadow: 0 2px 8px #0007;
 }
 
-.tuer.offen {
-    background: #ffed81;
-    color: #36621c;
+.header h1 {
+    font-family: 'Mountains of Christmas', cursive;
+    font-size: 3rem;
+    margin: 0 0 8px 0;
+    color: #274e13;
+    text-shadow: 0 3px 10px #fff5;
+}
+
+.subtitle {
+    font-size: 1.25rem;
+    color: #30638e;
+    margin-bottom: 20px;
+}
+
+.wreath {
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(circle, #e2eac7 70%, transparent 70%);
+    border-radius: 50%;
+    margin: 0 auto 8px auto;
+    border: 8px solid #519872;
+    box-shadow: 0 0 15px #a7c95766;
+    position: relative;
+}
+.wreath::before {
+    content: "★";
+    color: gold;
+    position: absolute;
+    top: -25px;
+    left: 32px;
+    font-size: 1.5rem;
+    text-shadow: 0 1px 4px #ff0;
+}
+
+#calendar.calendar {
+    margin: 30px auto;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 18px;
+    max-width: 720px;
+    padding: 18px;
+    background: rgba(255,255,255,0.7);
+    border-radius: 22px;
+    box-shadow: 0 4px 32px #a7c95733, 0 1px 8px #eee;
+}
+
+.door {
+    position: relative;
+    aspect-ratio: 1/1.22;
+    background: linear-gradient(135deg, #e8f6ef 60%, #99c1b9 100%);
+    border-radius: 18px;
+    box-shadow: 0 4px 18px #51987225;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
     cursor: pointer;
-    box-shadow: 0 4px 16px #ffd70070;
+    overflow: hidden;
+    transition: transform 0.13s, box-shadow 0.17s;
+    border: 3px solid #b1cbbb88;
 }
 
-.tuer span {
+.door.closed {
+    filter: grayscale(1) brightness(0.89);
+    cursor: not-allowed;
+    box-shadow: 0 2px 7px #bbb8, 0 0 0 #fff0;
+    opacity: 0.7;
     pointer-events: none;
+}
+.door.open:hover {
+    transform: scale(1.07) rotate(-3deg);
+    box-shadow: 0 6px 24px #f2b88044, 0 1px 8px #eee;
+    z-index: 2;
+}
+
+.door-number {
+    font-family: 'Mountains of Christmas', cursive;
+    font-size: 2.3rem;
+    color: #30638e;
+    margin-bottom: 4px;
+    text-shadow: 1px 1px 4px #fff, 0 2px 0 #b1cbbb;
+}
+
+.door-star {
+    font-size: 1.4rem;
+    margin-top: 5px;
+    color: #ef476f;
+    pointer-events: none;
+    user-select: none;
+    text-shadow: 0 2px 5px #fff;
+}
+
+.footer-hint {
+    margin: 34px 0 15px 0;
+    color: #222;
+    font-size: 1.1rem;
+    text-align: center;
+    opacity: 0.7;
+}
+
+footer {
+    margin-top: 30px;
+    color: #708090;
+    font-size: 1rem;
+    text-align: center;
+    opacity: 0.8;
+}
+
+#snow {
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    z-index: 20;
+}
+.snowflake {
+    position: absolute;
+    top: -2rem;
+    animation: snowFall linear infinite;
+    opacity: 0.88;
+    pointer-events: none;
+    user-select: none;
+    text-shadow: 0 0 7px #fff, 0 2px 5px #c2e9fb;
+}
+
+@keyframes snowFall {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(105vh) rotate(8deg); }
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    #calendar.calendar {
+        grid-template-columns: repeat(4, 1fr);
+        max-width: 480px;
+    }
+}
+@media (max-width: 600px) {
+    .header h1 {
+        font-size: 2.1rem;
+    }
+    #calendar.calendar {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        padding: 10px;
+        max-width: 98vw;
+    }
+    .wreath { width: 60px; height: 60px; }
 }
