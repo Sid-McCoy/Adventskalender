@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Tür 7 – Labyrinth</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Montserrat', Arial, sans-serif;
+      background: linear-gradient(135deg, #9be2fe 0%, #67d0f0 100%);
+      overflow: hidden;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      justify-content: center;
+    }
+    h1 {
+      margin: 20px 0 10px;
+      font-size: 2.2em;
+      letter-spacing: 1px;
+      color: #2266a5;
+      text-shadow: 2px 2px 0 #fff9, 0 2px 8px #2266a5cc;
+    }
+    .stats {
+      display: flex;
+      gap: 2em;
+      margin-bottom: 8px;
+      font-size: 1.15em;
+      color: #2266a5;
+    }
+    #maze {
+      border: 4px solid #2266a5;
+      background: #fffbe8;
+      box-shadow: 0 4px 32px #2266a560;
+      display: grid;
+      transition: box-shadow 0.25s;
+      user-select: none;
+    }
+    .cell {
+      width: 32px;
+      height: 32px;
+      box-sizing: border-box;
+      border-right: 2px solid #ccc;
+      border-bottom: 2px solid #ccc;
+      transition: background 0.1s;
+      background: #fff;
+      position: relative;
+    }
+    .wall-top    { border-top:    2px solid #2266a5; }
+    .wall-right  { border-right:  2px solid #2266a5; }
+    .wall-bottom { border-bottom: 2px solid #2266a5; }
+    .wall-left   { border-left:   2px solid #2266a5; }
+
+    .start {
+      background: linear-gradient(135deg, #b5e1ff, #c1ffe3 90%);
+      box-shadow: 0 0 8px #5ef7b3aa;
+    }
+    .end {
+      background: linear-gradient(135deg, #ffd6c1 20%, #ffb28e 100%);
+      box-shadow: 0 0 10px #ff990033;
+    }
+    .player {
+      background: none !important;
+    }
+    .player::after {
+      content: "🎅";
+      font-size: 1.6em;
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%,-60%) scale(1.05);
+      filter: drop-shadow(0 1px 4px #b0eaff);
+      pointer-events: none;
+      transition: transform 0.12s;
+    }
+    .star {
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%,-50%);
+      font-size: 1.4em;
+      z-index: 2;
+      pointer-events: none;
+      transition: filter 0.2s;
+      filter: drop-shadow(0 0 4px #ffd700cc);
+      animation: starpulse 1.3s infinite alternate;
+    }
+    @keyframes starpulse {
+      from { filter: drop-shadow(0 0 4px #ffd70044);}
+      to   { filter: drop-shadow(0 0 14px #ffd700bb);}
+    }
+    .collected {
+      opacity: 0.3;
+      filter: grayscale(0.8);
+      animation: none !important;
+    }
+    .congrats {
+      position: fixed;
+      left: 50%; top: 50%;
+      transform: translate(-50%,-50%);
+      background: #fffbe8ee;
+      border: 2px solid #2266a5;
+      box-shadow: 0 0 24px #2266a555;
+      padding: 2em 2.5em;
+      border-radius: 1.4em;
+      font-size: 1.3em;
+      color: #ff9933;
+      z-index: 10;
+      animation: pop 0.8s cubic-bezier(.47,1.64,.41,.8) 1;
+      text-align: center;
+    }
+    @keyframes pop {
+      0% { transform: translate(-50%,-50%) scale(0.7);}
+      50% { transform: translate(-50%,-50%) scale(1.12);}
+      100% { transform: translate(-50%,-50%) scale(1);}
+    }
+    .btn {
+      margin-top: 24px;
+      background: #fff;
+      color: #2266a5;
+      border: 2px solid #67d0f0;
+      padding: 0.7em 2em;
+      font-size: 1.1em;
+      border-radius: 0.9em;
+      cursor: pointer;
+      font-family: inherit;
+      box-shadow: 0 2px 8px #b5e1ff44;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn:hover {
+      background: #b5e1ff;
+      color: #fff;
+    }
+    @media (max-width: 600px) {
+      #maze { transform: scale(0.82);}
+      h1 { font-size: 1.3em;}
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🎄 Tür 7 – Labyrinth-Spiel</h1>
+  <div class="stats">
+    <div>Zeit: <span id="timer">0.0</span>s</div>
+    <div>Züge: <span id="moves">0</span></div>
+    <div>Sterne: <span id="stars">0</span>/<span id="stars-total">0</span></div>
+  </div>
+  <div id="maze"></div>
+  <button class="btn" id="restartBtn" style="display:none;">Noch mal spielen</button>
+</div>
+<div id="congrats" class="congrats" style="display:none;">
+  <div>✨ Geschafft! Du hast das Ziel gefunden! ✨<br><br>
+    <span id="result-timer"></span><br>
+    <span id="result-moves"></span><br>
+    <span id="result-stars"></span>
+  </div>
+</div>
+<script>
+  // --- Maze parameters ---
+  const rows = 13, cols = 17; // etwas größer
+  let maze, player, start, end, playing = true;
+  let moves = 0, timer = 0, timerInt = null;
+  let stars = [], starsCollected = 0, starsTotal = 0;
+
+  // Maze Generation
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      let j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // Leicht verschlungene Lösung mit Backtracker & Dead-End Entferner
+  function genMaze(rows, cols) {
+    let cells = [];
+    for (let y = 0; y < rows; y++) {
+      let row = [];
+      for (let x = 0; x < cols; x++) {
+        row.push({ x, y, walls: [true, true, true, true], visited: false }); // [oben, rechts, unten, links]
+      }
+      cells.push(row);
+    }
+    function carve(cx, cy) {
+      cells[cy][cx].visited = true;
+      shuffle([[0,-1,0],[1,0,1],[0,1,2],[-1,0,3]]).forEach(([dx,dy,wallIdx]) => {
+        let nx = cx + dx, ny = cy + dy;
+        if (ny >= 0 && ny < rows && nx >= 0 && nx < cols && !cells[ny][nx].visited) {
+          cells[cy][cx].walls[wallIdx] = false;
+          cells[ny][nx].walls[(wallIdx + 2) % 4] = false;
+          carve(nx, ny);
+        }
+      });
+    }
+    carve(0, 0);
+
+    // Dead-Ends auflockern: Öffne 10% aller Sackgassen für mehr Abzweigungen
+    let deadEnds = [];
+    for (let y = 0; y < rows; y++)
+      for (let x = 0; x < cols; x++) {
+        let open = cells[y][x].walls.filter(w => !w).length;
+        if (open === 1) deadEnds.push([x, y]);
+      }
+    shuffle(deadEnds).slice(0, Math.max(2, Math.floor(deadEnds.length * 0.1))).forEach(([x, y]) => {
+      let options = [];
+      if (y > 0    && cells[y][x].walls[0]) options.push(0);
+      if (x < cols-1 && cells[y][x].walls[1]) options.push(1);
+      if (y < rows-1 && cells[y][x].walls[2]) options.push(2);
+      if (x > 0    && cells[y][x].walls[3]) options.push(3);
+      if (options.length) {
+        let w = options[Math.floor(Math.random()*options.length)];
+        cells[y][x].walls[w] = false;
+        let [dx,dy] = [[0,-1],[1,0],[0,1],[-1,0]][w];
+        cells[y+dy][x+dx].walls[(w+2)%4] = false;
+      }
+    });
+    return cells;
+  }
+
+  // Bonus-Sterne zufällig im Labyrinth, aber nicht Start/Ziel
+  function placeStars(maze, num) {
+    let starList = [];
+    let options = [];
+    for (let y = 0; y < rows; y++)
+      for (let x = 0; x < cols; x++)
+        if (!(x === 0 && y === 0) && !(x === cols-1 && y === rows-1))
+          options.push({x, y});
+    shuffle(options);
+    for (let i = 0; i < num; i++) starList.push({ ...options[i], collected: false });
+    return starList;
+  }
+
+  function drawMaze(maze, player, start, end) {
+    const mazeDiv = document.getElementById('maze');
+    mazeDiv.innerHTML = '';
+    mazeDiv.style.gridTemplateRows = `repeat(${rows}, 32px)`;
+    mazeDiv.style.gridTemplateColumns = `repeat(${cols}, 32px)`;
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      const cell = maze[y][x];
+      const el = document.createElement('div');
+      el.classList.add('cell');
+      if (cell.walls[0]) el.classList.add('wall-top');
+      if (cell.walls[1]) el.classList.add('wall-right');
+      if (cell.walls[2]) el.classList.add('wall-bottom');
+      if (cell.walls[3]) el.classList.add('wall-left');
+      if (x === start.x && y === start.y) el.classList.add('start');
+      if (x === end.x && y === end.y) el.classList.add('end');
+      if (x === player.x && y === player.y) el.classList.add('player');
+
+      // Sterne
+      let star = stars.find(s => s.x === x && s.y === y);
+      if (star) {
+        let s = document.createElement('span');
+        s.className = 'star' + (star.collected ? ' collected' : '');
+        s.textContent = '⭐';
+        el.appendChild(s);
+      }
+
+      mazeDiv.appendChild(el);
+    }
+    document.getElementById('stars').textContent = starsCollected;
+    document.getElementById('stars-total').textContent = starsTotal;
+  }
+
+  function showCongrats() {
+    document.getElementById('congrats').style.display = 'block';
+    document.getElementById('restartBtn').style.display = 'block';
+    document.getElementById('result-timer').textContent = `Zeit: ${timer.toFixed(1)} Sekunden`;
+    document.getElementById('result-moves').textContent = `Züge: ${moves}`;
+    document.getElementById('result-stars').textContent = `Sterne gesammelt: ${starsCollected} von ${starsTotal}`;
+  }
+  function hideCongrats() {
+    document.getElementById('congrats').style.display = 'none';
+    document.getElementById('restartBtn').style.display = 'none';
+  }
+
+  function restart() {
+    maze = genMaze(rows, cols);
+    start = { x: 0, y: 0 };
+    end = { x: cols - 1, y: rows - 1 };
+    player = { ...start };
+    starsTotal = Math.max(3, Math.floor((rows * cols) / 26));
+    stars = placeStars(maze, starsTotal);
+    starsCollected = 0;
+    moves = 0;
+    timer = 0;
+    playing = true;
+    hideCongrats();
+    drawMaze(maze, player, start, end);
+    document.getElementById('moves').textContent = moves;
+    document.getElementById('timer').textContent = timer.toFixed(1);
+    if (timerInt) clearInterval(timerInt);
+    timerInt = setInterval(() => {
+      if (playing) {
+        timer += 0.1;
+        document.getElementById('timer').textContent = timer.toFixed(1);
+      }
+    }, 100);
+  }
+
+  function movePlayer(dx, dy) {
+    if (!playing) return;
+    let { x, y } = player;
+    let nx = x + dx, ny = y + dy;
+    if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) return;
+    // Check wall
+    if (dx === 1 && maze[y][x].walls[1]) return;
+    if (dx === -1 && maze[y][x].walls[3]) return;
+    if (dy === 1 && maze[y][x].walls[2]) return;
+    if (dy === -1 && maze[y][x].walls[0]) return;
+    player.x = nx;
+    player.y = ny;
+    moves++;
+    document.getElementById('moves').textContent = moves;
+
+    // Star?
+    let star = stars.find(s => s.x === nx && s.y === ny && !s.collected);
+    if (star) {
+      star.collected = true;
+      starsCollected++;
+    }
+
+    drawMaze(maze, player, start, end);
+
+    // Fertig?
+    if (player.x === end.x && player.y === end.y) {
+      playing = false;
+      clearInterval(timerInt);
+      setTimeout(showCongrats, 350);
+    }
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (!playing) return;
+    switch (e.key) {
+      case 'ArrowUp': case 'w': movePlayer(0, -1); break;
+      case 'ArrowDown': case 's': movePlayer(0, 1); break;
+      case 'ArrowLeft': case 'a': movePlayer(-1, 0); break;
+      case 'ArrowRight': case 'd': movePlayer(1, 0); break;
+    }
+  });
+
+  document.getElementById('restartBtn').onclick = restart;
+
+  restart();
+
+  // Touch für mobile
+  let touchStartX = null, touchStartY = null;
+  document.getElementById('maze').addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }
+  });
+  document.getElementById('maze').addEventListener('touchend', e => {
+    if (!playing || touchStartX === null || touchStartY === null) return;
+    let dx = e.changedTouches[0].clientX - touchStartX;
+    let dy = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 20) movePlayer(1, 0); else if (dx < -20) movePlayer(-1, 0);
+    } else {
+      if (dy > 20) movePlayer(0, 1); else if (dy < -20) movePlayer(0, -1);
+    }
+    touchStartX = null; touchStartY = null;
+  });
+
+</script>
+</body>
+</html>

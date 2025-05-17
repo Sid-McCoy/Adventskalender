@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Countdown bis Heiligabend</title>
+  <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #cbe7fc 0%, #e5d8f3 100%);
+      font-family: 'Mountains of Christmas', cursive;
+      overflow: hidden;
+      position: relative;
+    }
+    .card {
+      background: rgba(255,255,255,0.97);
+      border-radius: 32px;
+      box-shadow: 0 8px 32px 0 rgba(0,0,0,0.2);
+      padding: 3rem 2.5rem 2.5rem 2.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 340px;
+      position: relative;
+      z-index: 2;
+    }
+    h1 {
+      font-size: 2.6rem;
+      margin-bottom: 0.8em;
+      color: #bf1e1e;
+      letter-spacing: 1px;
+      text-shadow: 0 3px 8px #fff8, 0 2px 0 #eee;
+      text-align: center;
+    }
+    .countdown {
+      display: flex;
+      gap: 1.5em;
+      font-size: 2.2rem;
+      font-weight: bold;
+      margin: 0.7em 0 1.5em 0;
+      color: #00587a;
+      text-shadow: 0 2px 6px #99e3ff66;
+      letter-spacing: 2px;
+    }
+    .unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .label {
+      font-size: 0.92rem;
+      font-weight: 400;
+      color: #7a5d10;
+      letter-spacing: 0.7px;
+      margin-top: 0.2em;
+    }
+    .tree {
+      width: 60px;
+      margin-top: 1em;
+      animation: shake 2.5s infinite linear;
+      filter: drop-shadow(0 2px 4px #235);
+    }
+    @keyframes shake {
+      0%,100% { transform: rotate(-1deg);}
+      10%,90% { transform: rotate(2deg);}
+      20%,80% { transform: rotate(-3deg);}
+      30%,70% { transform: rotate(1deg);}
+      40%,60% { transform: rotate(-1deg);}
+      50% { transform: rotate(2deg);}
+    }
+    .snow {
+      position: absolute;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Noch so lange bis Heiligabend:</h1>
+    <div class="countdown" id="countdown">
+      <!-- Dynamisch -->
+    </div>
+    <img src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f384.png" alt="Weihnachtsbaum" class="tree" />
+  </div>
+  <canvas class="snow" id="snow"></canvas>
+  <script>
+    // Ziel: 24. Dezember, 00:00:00 Uhr
+    function getTimeLeft() {
+      let now = new Date();
+      let year = now.getFullYear();
+      let target = new Date(year, 11, 24, 0, 0, 0, 0);
+      if(now > target) target = new Date(year+1, 11, 24, 0, 0, 0, 0); // Falls schon Weihnachten
+      let diff = target - now;
+      let d = Math.floor(diff/(1000*60*60*24));
+      let h = Math.floor((diff/(1000*60*60))%24);
+      let m = Math.floor((diff/(1000*60))%60);
+      let s = Math.floor((diff/1000)%60);
+      return {d,h,m,s};
+    }
+    function renderCountdown() {
+      const cd = getTimeLeft();
+      document.getElementById('countdown').innerHTML = `
+        <div class="unit"><div>${String(cd.d).padStart(2,'0')}</div><div class="label">Tage</div></div>
+        <div class="unit"><div>${String(cd.h).padStart(2,'0')}</div><div class="label">Std</div></div>
+        <div class="unit"><div>${String(cd.m).padStart(2,'0')}</div><div class="label">Min</div></div>
+        <div class="unit"><div>${String(cd.s).padStart(2,'0')}</div><div class="label">Sek</div></div>
+      `;
+    }
+    setInterval(renderCountdown, 1000);
+    renderCountdown();
+
+    // Schneeflocken
+    const canvas = document.getElementById('snow');
+    const ctx = canvas.getContext('2d');
+    let w = window.innerWidth, h = window.innerHeight;
+    let flakes = [];
+    function resize() {
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = w;
+      canvas.height = h;
+    }
+    window.addEventListener('resize', resize);
+    function createFlake() {
+      return {
+        x: Math.random() * w,
+        y: Math.random() * -h,
+        r: Math.random() * 2.8 + 1.6,
+        s: Math.random() * 1.2 + 0.5,
+        o: Math.random() * 0.6 + 0.2,
+        t: Math.random() * Math.PI * 2,
+        drift: Math.random() * 1.4 + 0.3,
+      }
+    }
+    function drawFlakes() {
+      ctx.clearRect(0,0,w,h);
+      for(let f of flakes) {
+        ctx.save();
+        ctx.globalAlpha = f.o;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r, 0, Math.PI*2);
+        ctx.fillStyle = "#fff";
+        ctx.shadowColor = "#aae8ff";
+        ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    function updateFlakes() {
+      for(let f of flakes) {
+        f.y += f.s;
+        f.x += Math.sin(f.t) * f.drift * 0.3;
+        f.t += 0.01 + Math.random()*0.03;
+        if(f.y > h+f.r) {
+          Object.assign(f, createFlake());
+          f.y = -f.r;
+        }
+      }
+    }
+    function animate() {
+      updateFlakes();
+      drawFlakes();
+      requestAnimationFrame(animate);
+    }
+    function initSnow() {
+      resize();
+      flakes = [];
+      let count = Math.floor((w*h)/1800);
+      for(let i=0; i<count; i++) flakes.push(createFlake());
+      animate();
+    }
+    initSnow();
+  </script>
+</body>
+</html>

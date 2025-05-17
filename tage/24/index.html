@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Frohe Weihnachten!</title>
+  <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Mountains of Christmas', cursive, Arial, sans-serif;
+      background: radial-gradient(ellipse at center, #8ec5fc 0%, #e0c3fc 100%);
+    }
+    #snow, #fireworks {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .center-content {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: #fff;
+      z-index: 2;
+      width: 90vw;
+    }
+    .christmas-title {
+      font-size: 3.5rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+      text-shadow: 4px 4px 16px #0008, 0 0 24px #a24cff99;
+      animation: pop-in 2s cubic-bezier(.42,2,.21,1.03);
+    }
+    .greeting {
+      margin-top: 30px;
+      font-size: 2rem;
+      background: rgba(44,0,44,0.20);
+      display: inline-block;
+      padding: 18px 36px;
+      border-radius: 2em;
+      box-shadow: 0 2px 24px #b067f3a8, 0 1px 8px #fff6;
+      animation: fadein 2s 1s both;
+    }
+    @keyframes pop-in {
+      0% { transform: translate(-50%, -60%) scale(0.8) rotate(-2deg); opacity: 0;}
+      100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1;}
+    }
+    @keyframes fadein {
+      from { opacity: 0;}
+      to { opacity: 1;}
+    }
+    .tree {
+      width: 180px; margin: 35px auto 20px;
+      filter: drop-shadow(0 4px 24px #fff6);
+      animation: sway 3s ease-in-out infinite alternate;
+    }
+    @keyframes sway {
+      0% { transform: rotate(-2deg);}
+      100% { transform: rotate(2deg);}
+    }
+    .music-btn {
+      margin-top: 16px;
+      display: inline-block;
+      background: #fff3;
+      color: #fff;
+      border: none;
+      border-radius: 22px;
+      font-size: 1.15rem;
+      padding: 12px 26px;
+      cursor: pointer;
+      transition: background .2s, box-shadow .2s;
+      box-shadow: 0 2px 12px #9a67ff66;
+      outline: none;
+      font-family: inherit;
+    }
+    .music-btn:hover {
+      background: #fff9;
+      color: #7a16c5;
+      box-shadow: 0 0 18px #ffd70099;
+    }
+    @media (max-width: 650px) {
+      .christmas-title {font-size: 2rem;}
+      .greeting {font-size: 1rem;}
+      .tree {width: 100px;}
+    }
+  </style>
+</head>
+<body>
+<canvas id="snow"></canvas>
+<canvas id="fireworks"></canvas>
+<div class="center-content">
+  <div class="christmas-title">🎄 Frohe Weihnachten! 🎄</div>
+  <svg class="tree" viewBox="0 0 128 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="64,10 104,90 24,90" fill="#297B2F"/>
+    <polygon points="64,35 116,130 12,130" fill="#3BA043"/>
+    <rect x="50" y="130" width="28" height="30" rx="7" fill="#6B390F"/>
+    <circle cx="64" cy="26" r="5" fill="#FFD700"/>
+    <circle cx="95" cy="110" r="7" fill="#FFD700"/>
+    <circle cx="35" cy="115" r="5" fill="#FF5E7E"/>
+    <circle cx="64" cy="75" r="6" fill="#39D6FF"/>
+    <circle cx="82" cy="98" r="4" fill="#F7B731"/>
+    <circle cx="50" cy="65" r="4" fill="#C633F9"/>
+    <circle cx="72" cy="60" r="3" fill="#F85F36"/>
+  </svg>
+  <div class="greeting" id="greetingText">Lieber Sid,<br>ich wünsche dir zauberhafte Weihnachten voller Freude, Magie und leuchtender Momente!<br>Dein Chad Gepetti</div>
+  <button class="music-btn" id="musicBtn">🎶 Weihnachtsmusik abspielen</button>
+  <audio id="bgmusic" loop>
+    <source src="https://cdn.pixabay.com/audio/2022/12/19/audio_12fbf6c2ca.mp3" type="audio/mp3">
+  </audio>
+</div>
+<script>
+  // --- Snow animation ---
+  const snow = document.getElementById('snow');
+  const ctx = snow.getContext('2d');
+  let snows = [], W, H;
+  function resizeSnow() {
+    W = snow.width = window.innerWidth;
+    H = snow.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeSnow); resizeSnow();
+  for(let i=0;i<100;i++) snows.push({
+    x: Math.random()*W, y: Math.random()*H,
+    r: Math.random()*2+1.2, d: Math.random()*1+0.6,
+    s: Math.random()*0.6+0.2, w: Math.random()*360
+  });
+  function drawSnow() {
+    ctx.clearRect(0,0,W,H);
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = "#FFF";
+    snows.forEach(s=>{
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, 2*Math.PI);
+      ctx.fill();
+    });
+    ctx.restore();
+    moveSnow();
+    requestAnimationFrame(drawSnow);
+  }
+  function moveSnow() {
+    for(let s of snows){
+      s.y += s.d;
+      s.x += Math.sin(s.w/20) * s.s;
+      s.w += Math.random()*0.9;
+      if(s.y > H+5) {s.y = -5; s.x = Math.random()*W;}
+      if(s.x < -10 || s.x > W+10) {s.x = Math.random()*W;}
+    }
+  }
+  drawSnow();
+
+  // --- Fireworks ---
+  const fireC = document.getElementById('fireworks');
+  const fireCtx = fireC.getContext('2d');
+  let FW = fireC.width = window.innerWidth, FH = fireC.height = window.innerHeight;
+  window.addEventListener('resize', ()=> {
+    FW = fireC.width = window.innerWidth;
+    FH = fireC.height = window.innerHeight;
+  });
+  let fireworks = [];
+  function launchFirework(x, y, color) {
+    const count = 32 + Math.floor(Math.random()*16);
+    let hue = color || Math.floor(Math.random()*360);
+    for(let i=0;i<count;i++){
+      let angle = (Math.PI*2/count)*i;
+      fireworks.push({
+        x, y,
+        vx: Math.cos(angle)*(2+Math.random()*2),
+        vy: Math.sin(angle)*(2+Math.random()*2),
+        alpha: 1, radius: 1+Math.random()*2, hue
+      });
+    }
+  }
+  function updateFireworks() {
+    fireCtx.clearRect(0,0,FW,FH);
+    for(let i=fireworks.length-1;i>=0;i--){
+      let f = fireworks[i];
+      fireCtx.save();
+      fireCtx.globalAlpha = f.alpha;
+      fireCtx.beginPath();
+      fireCtx.arc(f.x, f.y, f.radius, 0, 2*Math.PI);
+      fireCtx.fillStyle = `hsl(${f.hue},98%,60%)`;
+      fireCtx.shadowBlur = 18; fireCtx.shadowColor = `hsl(${f.hue},100%,70%)`;
+      fireCtx.fill();
+      fireCtx.restore();
+      f.x += f.vx;
+      f.y += f.vy;
+      f.vy += 0.03;
+      f.alpha -= 0.013 + Math.random()*0.003;
+      if(f.alpha <= 0) fireworks.splice(i,1);
+    }
+    requestAnimationFrame(updateFireworks);
+  }
+  setInterval(()=>{
+    launchFirework(
+      120+Math.random()*(FW-240),
+      100+Math.random()*(FH/2-120),
+      Math.floor(Math.random()*360)
+    );
+  }, 1400);
+  updateFireworks();
+
+  // --- Music ---
+  const btn = document.getElementById('musicBtn');
+  const audio = document.getElementById('bgmusic');
+  let isPlaying = false;
+  btn.addEventListener('click', ()=>{
+    if(!isPlaying) {
+      audio.play();
+      btn.textContent = '⏸ Musik pausieren';
+      isPlaying = true;
+    } else {
+      audio.pause();
+      btn.textContent = '🎶 Weihnachtsmusik abspielen';
+      isPlaying = false;
+    }
+  });
+
+  // --- Persönliche Gruß Animation ---
+  function animateGreeting() {
+    const text = document.getElementById('greetingText');
+    let txt = text.innerHTML;
+    text.innerHTML = '';
+    let idx = 0;
+    function type() {
+      if(idx <= txt.length) {
+        text.innerHTML = txt.slice(0, idx) + "<span style='opacity:.3'>"+txt.slice(idx)+"</span>";
+        idx++;
+        setTimeout(type, 22);
+      }
+    }
+    type();
+  }
+  setTimeout(animateGreeting, 500);
+</script>
+</body>
+</html>

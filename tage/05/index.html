@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory-Spiel – Tür 5</title>
+    <link rel="stylesheet" href="../../style.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #e0e7ff 0%, #ffe4e6 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            margin-top: 40px;
+            background: rgba(255,255,255,0.85);
+            border-radius: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(60,60,90,0.2);
+            padding: 2rem 2rem 1.5rem 2rem;
+            max-width: 440px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #7c3aed;
+            margin-bottom: 0.5rem;
+            letter-spacing: 1px;
+            font-size: 2rem;
+        }
+        .info {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 1.2rem;
+        }
+        .memory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 70px);
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        .card {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #f3f4f6 60%, #a7f3d0 100%);
+            border-radius: 1rem;
+            box-shadow: 0 2px 8px rgba(60,60,90,0.09);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.11s, box-shadow 0.13s;
+            user-select: none;
+        }
+        .card.flipped, .card.matched {
+            background: linear-gradient(120deg, #c7d2fe 30%, #f9a8d4 100%);
+            box-shadow: 0 2px 8px rgba(60,60,90,0.15);
+            cursor: default;
+        }
+        .card .front, .card .back {
+            position: absolute;
+            width: 100%; height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backface-visibility: hidden;
+            transition: opacity 0.18s;
+        }
+        .card .front {
+            opacity: 0;
+            font-size: 2.1rem;
+        }
+        .card.flipped .front, .card.matched .front {
+            opacity: 1;
+        }
+        .card .back {
+            opacity: 1;
+            color: #fff;
+            font-weight: bold;
+            background: linear-gradient(120deg, #7c3aed 50%, #f472b6 100%);
+            border-radius: 1rem;
+            font-size: 2rem;
+            box-shadow: 0 1px 5px rgba(124,58,237,0.08);
+        }
+        .card.flipped .back, .card.matched .back {
+            opacity: 0;
+        }
+        .restart-btn {
+            background: linear-gradient(120deg, #6366f1 0%, #a21caf 100%);
+            color: #fff;
+            border: none;
+            border-radius: 1.1rem;
+            padding: 0.65rem 1.7rem;
+            font-size: 1.15rem;
+            cursor: pointer;
+            margin: 0 auto;
+            display: block;
+            transition: background 0.12s, transform 0.10s;
+            box-shadow: 0 2px 8px rgba(60,60,90,0.10);
+        }
+        .restart-btn:hover {
+            background: linear-gradient(120deg, #a21caf 10%, #6366f1 80%);
+            transform: scale(1.06);
+        }
+        @media (max-width: 600px) {
+            .container {
+                max-width: 98vw;
+                padding: 1rem 0.2rem;
+            }
+            .memory-grid {
+                grid-template-columns: repeat(4, 19vw);
+                gap: 3vw;
+            }
+            .card {
+                width: 19vw;
+                height: 19vw;
+                min-width: 48px;
+                min-height: 48px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎄 Memory – Tür 5</h1>
+        <div class="info" id="info">Finde alle Paare! <span id="moves-info"></span></div>
+        <div class="memory-grid" id="memory-grid"></div>
+        <button class="restart-btn" id="restart-btn" style="display:none;">🔄 Neu starten</button>
+    </div>
+
+    <script>
+        // FANCY ICONS – für die Karten (16 Felder, 8 Paare)
+        const icons = [
+            "❄️","🎅","🎁","🌟","🦌","🍪","⛄","🎄"
+        ];
+        let deck = [];
+        let flippedCards = [];
+        let matchedCount = 0;
+        let lockBoard = false;
+        let moves = 0;
+
+        function shuffle(array) {
+            for(let i=array.length-1; i>0; i--){
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function createDeck() {
+            deck = [];
+            const doubled = icons.concat(icons);
+            shuffle(doubled);
+            deck = doubled.map((icon, idx) => ({
+                id: idx,
+                icon,
+                matched: false,
+            }));
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('memory-grid');
+            grid.innerHTML = '';
+            deck.forEach((card, idx) => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card';
+                cardDiv.dataset.index = idx;
+                cardDiv.innerHTML = `
+                    <div class="front">${card.icon}</div>
+                    <div class="back">?</div>
+                `;
+                cardDiv.addEventListener('click', handleFlip);
+                grid.appendChild(cardDiv);
+            });
+            updateMoves();
+        }
+
+        function handleFlip(e) {
+            if (lockBoard) return;
+            const idx = +e.currentTarget.dataset.index;
+            const cardDiv = e.currentTarget;
+            if (deck[idx].matched || cardDiv.classList.contains('flipped') || flippedCards.length === 2) return;
+
+            cardDiv.classList.add('flipped');
+            flippedCards.push({idx, cardDiv});
+            
+            if (flippedCards.length === 2) {
+                moves++;
+                updateMoves();
+                const [first, second] = flippedCards;
+                if (deck[first.idx].icon === deck[second.idx].icon) {
+                    deck[first.idx].matched = true;
+                    deck[second.idx].matched = true;
+                    flippedCards.forEach(({cardDiv}) => cardDiv.classList.add('matched'));
+                    flippedCards = [];
+                    matchedCount++;
+                    if (matchedCount === icons.length) setTimeout(showWin, 600);
+                } else {
+                    lockBoard = true;
+                    setTimeout(() => {
+                        flippedCards.forEach(({cardDiv}) => cardDiv.classList.remove('flipped'));
+                        flippedCards = [];
+                        lockBoard = false;
+                    }, 950);
+                }
+            }
+        }
+
+        function showWin() {
+            document.getElementById('info').innerHTML = `<strong>🎉 Geschafft!</strong> Du hast alle Paare in <b>${moves}</b> Zügen gefunden.`;
+            document.getElementById('restart-btn').style.display = 'block';
+        }
+
+        function updateMoves() {
+            document.getElementById('moves-info').textContent = moves > 0 ? `Züge: ${moves}` : '';
+        }
+
+        function restartGame() {
+            matchedCount = 0;
+            moves = 0;
+            flippedCards = [];
+            lockBoard = false;
+            document.getElementById('restart-btn').style.display = 'none';
+            document.getElementById('info').innerHTML = `Finde alle Paare! <span id="moves-info"></span>`;
+            createDeck();
+            renderGrid();
+        }
+
+        // Initialisieren
+        document.getElementById('restart-btn').addEventListener('click', restartGame);
+        restartGame();
+
+    </script>
+</body>
+</html>

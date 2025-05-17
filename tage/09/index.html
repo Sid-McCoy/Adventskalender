@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tür 9 – Hangman</title>
+    <link rel="stylesheet" href="../../style.css">
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #86a8e7 0%, #91eac9 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Montserrat', Arial, sans-serif;
+        }
+        .hangman-container {
+            background: rgba(255,255,255,0.98);
+            box-shadow: 0 8px 24px rgba(34,34,68,0.08);
+            border-radius: 2rem;
+            padding: 2.5rem 2rem 2rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 420px;
+            width: 100%;
+            gap: 2rem;
+        }
+        .hangman-canvas {
+            width: 220px;
+            height: 220px;
+            background: #e7f0fd;
+            border-radius: 2rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 12px rgba(60,60,90,0.06);
+        }
+        .word-display {
+            letter-spacing: .7rem;
+            font-size: 2.3rem;
+            color: #36395a;
+            user-select: none;
+            margin-bottom: .5rem;
+        }
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: .4rem;
+            margin-top: .5rem;
+            margin-bottom: 1.5rem;
+        }
+        .key {
+            background: #f6f8fa;
+            border: none;
+            border-radius: .8rem;
+            padding: .6rem .3rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #4863a0;
+            transition: background .15s;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(30,80,120,0.03);
+        }
+        .key:disabled {
+            background: #c5d8ee;
+            color: #8a9bb8;
+            cursor: not-allowed;
+        }
+        .status-message {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #26b07c;
+            margin-bottom: 1rem;
+            text-align: center;
+            min-height: 2.2rem;
+        }
+        .status-message.fail {
+            color: #e95252;
+        }
+        .restart-btn {
+            background: linear-gradient(90deg, #5f7cff, #37e5a7);
+            border: none;
+            color: white;
+            font-weight: bold;
+            padding: .8rem 2.3rem;
+            border-radius: 2rem;
+            font-size: 1.1rem;
+            margin-top: 1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(34,70,130,0.09);
+            transition: background .12s;
+        }
+        .restart-btn:hover {
+            background: linear-gradient(90deg, #4960df, #2cba83);
+        }
+        @media (max-width: 500px) {
+            .hangman-container {padding: 1.2rem 0.2rem;}
+            .hangman-canvas {width: 150px; height: 150px;}
+            .word-display {font-size: 1.3rem;}
+            .keyboard {grid-template-columns: repeat(6, 1fr);}
+        }
+    </style>
+</head>
+<body>
+<div class="hangman-container">
+    <canvas class="hangman-canvas" width="220" height="220"></canvas>
+    <div class="word-display" id="wordDisplay">_ _ _ _ _</div>
+    <div class="status-message" id="statusMessage"></div>
+    <div class="keyboard" id="keyboard"></div>
+    <button class="restart-btn" id="restartBtn" style="display:none;">Neues Wort</button>
+</div>
+<script>
+const WORDS = [
+    "SCHNEEFLOCKE", "WEIHNACHT", "STIEFEL", "KALENDER", "GESCHENK", "KAMIN",
+    "RENTIER", "TANNENBAUM", "PLÄTZCHEN", "KERZE", "NIKOLAUS", "ZIMTSTERNE",
+    "ADVENT", "GLÜHWEIN", "LICHTERKETTE", "WINTER", "SCHLITTEN", "MÜTZE",
+    "GLOCKE", "KRIPPE", "WICHTEL", "SCHOKOLADE"
+];
+let secretWord = "";
+let revealed = [];
+let guessed = [];
+let fails = 0;
+const MAX_FAILS = 7;
+
+const wordDisplay = document.getElementById('wordDisplay');
+const statusMessage = document.getElementById('statusMessage');
+const keyboardDiv = document.getElementById('keyboard');
+const restartBtn = document.getElementById('restartBtn');
+const canvas = document.querySelector('.hangman-canvas');
+const ctx = canvas.getContext('2d');
+
+function pickWord() {
+    return WORDS[Math.floor(Math.random() * WORDS.length)];
+}
+
+function initGame() {
+    secretWord = pickWord();
+    revealed = Array(secretWord.length).fill(false);
+    guessed = [];
+    fails = 0;
+    statusMessage.textContent = '';
+    statusMessage.className = 'status-message';
+    restartBtn.style.display = "none";
+    renderWord();
+    renderKeyboard();
+    drawHangman(fails);
+}
+function renderWord() {
+    wordDisplay.textContent = secretWord.split("").map((c,i) => revealed[i] ? c : "_").join(" ");
+}
+function renderKeyboard() {
+    keyboardDiv.innerHTML = "";
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ";
+    for (let c of alphabet) {
+        const btn = document.createElement('button');
+        btn.className = 'key';
+        btn.textContent = c;
+        btn.disabled = guessed.includes(c) || isGameOver();
+        btn.onclick = () => handleGuess(c);
+        keyboardDiv.appendChild(btn);
+    }
+}
+function handleGuess(letter) {
+    guessed.push(letter);
+    if (secretWord.includes(letter)) {
+        let found = false;
+        secretWord.split("").forEach((c, i) => {
+            if (c === letter) { revealed[i] = true; found = true; }
+        });
+        renderWord();
+        if (revealed.every(Boolean)) {
+            statusMessage.textContent = "🎉 Gewonnen! Du hast das Wort erraten!";
+            statusMessage.className = 'status-message';
+            showSolution(true);
+            gameOver();
+        }
+    } else {
+        fails++;
+        drawHangman(fails);
+        if (fails >= MAX_FAILS) {
+            statusMessage.textContent = `Verloren! Das Wort war: ${secretWord}`;
+            statusMessage.className = 'status-message fail';
+            showSolution(false);
+            gameOver();
+        } else {
+            statusMessage.textContent = `Falsch! Versuche übrig: ${MAX_FAILS - fails}`;
+            statusMessage.className = 'status-message fail';
+        }
+    }
+    renderKeyboard();
+}
+function showSolution(won) {
+    for (let i = 0; i < revealed.length; i++) revealed[i] = true;
+    renderWord();
+}
+function isGameOver() {
+    return fails >= MAX_FAILS || revealed.every(Boolean);
+}
+function gameOver() {
+    renderKeyboard();
+    restartBtn.style.display = "";
+}
+
+restartBtn.onclick = initGame;
+
+// Draw fancy hangman with animated body parts
+function drawHangman(step) {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#4960df";
+    ctx.lineCap = "round";
+    // Base
+    ctx.beginPath();
+    ctx.moveTo(30,200); ctx.lineTo(190,200); ctx.stroke();
+    // Stand
+    ctx.beginPath();
+    ctx.moveTo(60,200); ctx.lineTo(60,40); ctx.lineTo(150,40); ctx.lineTo(150,60); ctx.stroke();
+    if (step > 0) { // Kopf
+        ctx.beginPath();
+        ctx.arc(150,80,20,0,2*Math.PI); ctx.stroke();
+    }
+    if (step > 1) { // Körper
+        ctx.beginPath();
+        ctx.moveTo(150,100); ctx.lineTo(150,140); ctx.stroke();
+    }
+    if (step > 2) { // linker Arm
+        ctx.beginPath();
+        ctx.moveTo(150,110); ctx.lineTo(125,120); ctx.stroke();
+    }
+    if (step > 3) { // rechter Arm
+        ctx.beginPath();
+        ctx.moveTo(150,110); ctx.lineTo(175,120); ctx.stroke();
+    }
+    if (step > 4) { // linkes Bein
+        ctx.beginPath();
+        ctx.moveTo(150,140); ctx.lineTo(130,175); ctx.stroke();
+    }
+    if (step > 5) { // rechtes Bein
+        ctx.beginPath();
+        ctx.moveTo(150,140); ctx.lineTo(170,175); ctx.stroke();
+    }
+    if (step > 6) { // fancy Weihnachtsmütze
+        ctx.beginPath();
+        ctx.moveTo(138,65);
+        ctx.lineTo(150,55);
+        ctx.lineTo(162,65);
+        ctx.closePath();
+        ctx.fillStyle = "#e95252";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(150,55,5,0,2*Math.PI);
+        ctx.fillStyle = "#fff";
+        ctx.fill();
+    }
+}
+
+initGame();
+</script>
+</body>
+</html>

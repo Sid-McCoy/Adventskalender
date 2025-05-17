@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tür 6 – Nikolaus-Stiefel-Spiel</title>
+  <link rel="stylesheet" href="../../style.css">
+  <style>
+    body {
+      background: linear-gradient(120deg, #b61818 0%, #ffdad7 100%);
+      min-height: 100vh;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      margin: 0;
+    }
+    h1 {
+      margin-top: 40px;
+      font-size: 2.4rem;
+      color: #fff;
+      text-shadow: 2px 2px 10px #b61818, 1px 2px 2px #600606;
+      letter-spacing: 0.03em;
+    }
+    #spielbereich {
+      margin-top: 30px;
+      background: #fff8f5;
+      border-radius: 2rem;
+      padding: 32px 24px 24px 24px;
+      box-shadow: 0 8px 24px #d64e23a8;
+      max-width: 410px;
+      width: 98%;
+    }
+    #info {
+      margin-bottom: 16px;
+      font-size: 1.2rem;
+      color: #b61818;
+      text-align: center;
+    }
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(5, 50px);
+      grid-template-rows: repeat(3, 50px);
+      gap: 16px;
+      justify-content: center;
+      margin: 24px 0;
+      min-width: 270px;
+    }
+    .feld {
+      width: 50px; height: 50px;
+      background: #eee;
+      border-radius: 16px;
+      box-shadow: 0 2px 6px #b6181844;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .feld.aufgedeckt {
+      background: #fff6d2;
+      cursor: default;
+    }
+    .feld.stiefel {
+      animation: bounceIn 0.6s;
+    }
+    @keyframes bounceIn {
+      0% { transform: scale(0.5); opacity: 0.3;}
+      60% { transform: scale(1.2);}
+      100% { transform: scale(1); opacity: 1;}
+    }
+    #status {
+      margin: 18px 0 6px 0;
+      font-weight: 600;
+      font-size: 1.25rem;
+      color: #096b0a;
+      text-align: center;
+    }
+    .verloren {
+      color: #ad0909 !important;
+    }
+    button {
+      background: #b61818;
+      color: #fff;
+      border: none;
+      border-radius: 1rem;
+      font-size: 1.1rem;
+      padding: 10px 28px;
+      margin-top: 16px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px #7a0909a6;
+      transition: background 0.18s;
+    }
+    button:hover {
+      background: #ff4545;
+    }
+    .nikolaus-emoji {
+      font-size: 2.4rem;
+      margin-top: 10px;
+      animation: nikolausBounce 1.5s infinite;
+    }
+    @keyframes nikolausBounce {
+      0% { transform: translateY(0);}
+      35% { transform: translateY(-7px);}
+      70% { transform: translateY(0);}
+    }
+    @media (max-width: 500px) {
+      #spielbereich { padding: 18px 4px 18px 4px; }
+      #grid { gap: 8px; }
+      .feld { width: 40px; height: 40px; font-size: 1.5rem;}
+    }
+  </style>
+</head>
+<body>
+  <h1>
+    <span class="nikolaus-emoji">🧑‍🎄</span> Tür 6: Nikolaus!
+  </h1>
+  <div id="spielbereich">
+    <div id="info">Im Haus verstecken sich heute Nacht <b>5 Nikolaus-Stiefel</b>!  
+      Finde sie alle in maximal <b>9 Versuchen</b> für eine Nikolaus-Überraschung.<br>
+      <small style="color:#777">(Tippe auf die Felder!)</small>
+    </div>
+    <div id="grid"></div>
+    <div id="status"></div>
+    <button id="neuBtn" style="display:none;">Nochmal spielen</button>
+  </div>
+  <script>
+    const grid = document.getElementById('grid');
+    const statusDiv = document.getElementById('status');
+    const neuBtn = document.getElementById('neuBtn');
+    const FELDER = 15;
+    const STIEFEL = 5;
+    const MAX_VERSUCHE = 9;
+    let stiefelFelder = [];
+    let gefunden = 0, zuege = 0;
+    let spielEnde = false;
+
+    function stiefelEmoji() {
+      // Nikolaus-Stiefel Emoji!
+      return '🧑‍🎄';
+    }
+    function konfetti() {
+      for(let i=0; i<50; i++){
+        let el = document.createElement('div');
+        el.style.position = 'fixed';
+        el.style.left = (Math.random()*100)+'vw';
+        el.style.top = '-40px';
+        el.style.width = el.style.height = (16+Math.random()*12)+'px';
+        el.style.background = `hsl(${Math.random()*360},80%,70%)`;
+        el.style.borderRadius = '50%';
+        el.style.opacity = 0.8;
+        el.style.pointerEvents = 'none';
+        el.style.zIndex = 9999;
+        el.style.transition = 'top 2.6s cubic-bezier(.43,.8,.23,.96), opacity 0.8s';
+        document.body.appendChild(el);
+        setTimeout(()=> {
+          el.style.top = (65 + Math.random()*25)+'vh';
+          el.style.opacity = 0;
+        }, 30);
+        setTimeout(()=> el.remove(), 3200);
+      }
+    }
+    function zeichneGrid() {
+      grid.innerHTML = '';
+      for(let i=0;i<FELDER;i++){
+        let feld = document.createElement('div');
+        feld.className = 'feld';
+        feld.setAttribute('data-index', i);
+        feld.addEventListener('click', () => feldKlick(i, feld));
+        grid.appendChild(feld);
+      }
+    }
+    function verteileStiefel() {
+      stiefelFelder = [];
+      let alle = [...Array(FELDER).keys()];
+      for(let i=0;i<STIEFEL;i++){
+        let pos = Math.floor(Math.random()*alle.length);
+        stiefelFelder.push(alle[pos]);
+        alle.splice(pos,1);
+      }
+    }
+    function feldKlick(idx, feld) {
+      if(spielEnde) return;
+      if(feld.classList.contains('aufgedeckt')) return;
+      zuege++;
+      feld.classList.add('aufgedeckt');
+      if(stiefelFelder.includes(idx)){
+        feld.innerHTML = stiefelEmoji();
+        feld.classList.add('stiefel');
+        gefunden++;
+        statusDiv.innerHTML = `🎉 Du hast einen Nikolaus-Stiefel gefunden! <br>Gefunden: <b>${gefunden}</b> von <b>${STIEFEL}</b> | Versuche: <b>${zuege}</b> / <b>${MAX_VERSUCHE}</b>`;
+      } else {
+        feld.innerHTML = '❌';
+        statusDiv.innerHTML = `Leider leer! <br>Gefunden: <b>${gefunden}</b> von <b>${STIEFEL}</b> | Versuche: <b>${zuege}</b> / <b>${MAX_VERSUCHE}</b>`;
+      }
+
+      if(gefunden === STIEFEL){
+        spielEnde = true;
+        setTimeout(()=>{
+          statusDiv.innerHTML = `<span style="font-size:1.6rem">🎁 Alle Nikolaus-Stiefel gefunden! Frohen Nikolaus! 🎁</span><br>Du hast ${zuege} Versuche gebraucht.`;
+          konfetti();
+          neuBtn.style.display = 'inline-block';
+        }, 300);
+      } else if (zuege >= MAX_VERSUCHE) {
+        spielEnde = true;
+        // Zeige die restlichen Stiefel!
+        document.querySelectorAll('.feld').forEach((feld, i) => {
+          if (stiefelFelder.includes(i) && !feld.classList.contains('aufgedeckt')) {
+            feld.innerHTML = stiefelEmoji();
+            feld.classList.add('aufgedeckt', 'stiefel');
+            feld.style.opacity = 0.5;
+          }
+        });
+        statusDiv.innerHTML = `<span class="verloren">Leider verloren! 😢<br>Du hast nicht alle Nikolaus-Stiefel gefunden.<br>Gefunden: <b>${gefunden}</b> von <b>${STIEFEL}</b></span>`;
+        neuBtn.style.display = 'inline-block';
+      }
+    }
+    function reset() {
+      gefunden = 0; zuege = 0; spielEnde = false;
+      statusDiv.innerHTML = '';
+      neuBtn.style.display = 'none';
+      verteileStiefel();
+      zeichneGrid();
+    }
+    neuBtn.addEventListener('click', reset);
+
+    // Start
+    verteileStiefel();
+    zeichneGrid();
+  </script>
+</body>
+</html>

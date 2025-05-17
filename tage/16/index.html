@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Mini-Taschenrechner ✨</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(circle at 60% 40%, #fffbe9 0%, #e0d4fc 100%);
+            overflow: hidden;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        .calc-container {
+            position: relative;
+            width: 330px;
+            max-width: 95vw;
+            background: rgba(255,255,255,0.96);
+            border-radius: 2em;
+            box-shadow: 0 6px 36px #9a8cf522, 0 2px 8px #fcf7e355;
+            padding: 2.3em 1.1em 1.4em 1.1em;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .display {
+            width: 98%;
+            height: 2.6em;
+            font-size: 1.5em;
+            border-radius: 1em;
+            background: #f7f5fe;
+            color: #583ec7;
+            border: none;
+            margin-bottom: 1em;
+            text-align: right;
+            padding: 0.5em 0.9em;
+            box-shadow: 0 2px 12px #d7c3fa11;
+            outline: none;
+            font-family: inherit;
+        }
+        .btn-row {
+            width: 100%;
+            display: flex;
+            gap: 0.6em;
+            margin-bottom: 0.6em;
+        }
+        .btn {
+            flex: 1 1 0;
+            padding: 0.92em 0;
+            border-radius: 0.8em;
+            background: #ede8fc;
+            color: #7446e8;
+            border: none;
+            font-size: 1.2em;
+            font-weight: 600;
+            box-shadow: 0 2px 7px #b7a5ed2a;
+            cursor: pointer;
+            transition: background 0.12s, color 0.12s;
+            user-select: none;
+        }
+        .btn:active, .btn.active {
+            background: #e4d5fa;
+            color: #b97f10;
+        }
+        .btn-op {
+            background: #dbd1ff;
+            color: #b97f10;
+        }
+        .btn-op:active, .btn-op.active {
+            background: #f4e2c5;
+            color: #7446e8;
+        }
+        .btn-eq {
+            background: linear-gradient(90deg,#ffdd85,#c6aeff 90%);
+            color: #864400;
+            font-weight: bold;
+        }
+        .btn-eq:active, .btn-eq.active {
+            background: #fffbe2;
+            color: #7446e8;
+        }
+        .copy-btn {
+            margin-top: 0.6em;
+            background: #fff3e3;
+            color: #b97f10;
+            border-radius: 1em;
+            border: none;
+            padding: 0.3em 1.2em;
+            font-size: 1em;
+            box-shadow: 0 2px 6px #eee5a944;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .copy-btn:active {
+            background: #ffefae;
+        }
+        @media (max-width: 450px) {
+            .calc-container {
+                width: 99vw;
+                padding: 0.6em 0.15em 1.1em 0.15em;
+            }
+            .display {
+                font-size: 1.1em;
+            }
+        }
+        /* Sternenstaub Animation */
+        .star {
+            position: absolute;
+            pointer-events: none;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ffe3a9 0%, #c6aeff 50%, #fff0 100%);
+            opacity: 0.85;
+            animation: twinkle 1.3s linear forwards;
+        }
+        @keyframes twinkle {
+            from { opacity: 0.85; transform: scale(1);}
+            70%  { opacity: 1;   }
+            to   { opacity: 0; transform: scale(0.3);}
+        }
+    </style>
+</head>
+<body>
+    <div class="calc-container">
+        <input class="display" id="display" type="text" value="0" readonly tabindex="-1" />
+        <div class="btn-row">
+            <button class="btn btn-op" data-val="C">C</button>
+            <button class="btn btn-op" data-val="(">(</button>
+            <button class="btn btn-op" data-val=")">)</button>
+            <button class="btn btn-op" data-val="/">÷</button>
+        </div>
+        <div class="btn-row">
+            <button class="btn" data-val="7">7</button>
+            <button class="btn" data-val="8">8</button>
+            <button class="btn" data-val="9">9</button>
+            <button class="btn btn-op" data-val="*">×</button>
+        </div>
+        <div class="btn-row">
+            <button class="btn" data-val="4">4</button>
+            <button class="btn" data-val="5">5</button>
+            <button class="btn" data-val="6">6</button>
+            <button class="btn btn-op" data-val="-">−</button>
+        </div>
+        <div class="btn-row">
+            <button class="btn" data-val="1">1</button>
+            <button class="btn" data-val="2">2</button>
+            <button class="btn" data-val="3">3</button>
+            <button class="btn btn-op" data-val="+">+</button>
+        </div>
+        <div class="btn-row">
+            <button class="btn" data-val="0" style="flex:2">0</button>
+            <button class="btn" data-val=".">,</button>
+            <button class="btn btn-eq" data-val="=">=</button>
+        </div>
+        <button class="copy-btn" id="copyBtn" title="Kopiere Ergebnis">📋 Kopieren</button>
+    </div>
+    <script>
+        const display = document.getElementById('display');
+        const btns = document.querySelectorAll('.btn');
+        const copyBtn = document.getElementById('copyBtn');
+        let input = '';
+        let justEvaluated = false;
+
+        function updateDisplay(val) {
+            display.value = val.replace('.', ',');
+        }
+
+        function evaluate(expr) {
+            try {
+                // Sicheres Auswerten: Nur Zahlen, Klammern, Operatoren
+                let safe = expr.replace(/[^0-9\+\-\*\/\.\(\)]/g, '');
+                let result = Function('"use strict";return (' + safe + ')')();
+                return (typeof result === "number" && isFinite(result)) ? result.toString() : "Fehler";
+            } catch {
+                return "Fehler";
+            }
+        }
+
+        btns.forEach(btn => {
+            btn.addEventListener('click', e => {
+                const val = btn.getAttribute('data-val');
+                handleInput(val);
+                btn.classList.add('active');
+                setTimeout(()=>btn.classList.remove('active'), 120);
+                starBurst(e);
+            });
+        });
+
+        function handleInput(val) {
+            if (val === 'C') {
+                input = '';
+                justEvaluated = false;
+                updateDisplay('0');
+                return;
+            }
+            if (val === '=') {
+                let result = evaluate(input.replace(',', '.'));
+                updateDisplay(result);
+                input = result === "Fehler" ? '' : result.replace('.', ',');
+                justEvaluated = true;
+                return;
+            }
+            if (justEvaluated && '0123456789.('.includes(val)) {
+                input = '';
+                justEvaluated = false;
+            }
+            if (val === '.' && /[.,]/.test(input.slice(-1))) return;
+            if (val === ',' || val === '.') val = '.';
+            input += val;
+            updateDisplay(input.replace('.', ',') || '0');
+        }
+
+        // Copy-to-Clipboard
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(display.value.replace(',', '.'));
+            copyBtn.innerText = '✅ Kopiert!';
+            setTimeout(() => copyBtn.innerText = '📋 Kopieren', 1500);
+        });
+
+        // Keyboard Support
+        window.addEventListener('keydown', e => {
+            let map = {
+                '/': '/', '*': '*', '-': '-', '+': '+', 'Enter': '=', 'c': 'C', 'C': 'C', ',': '.', '.': '.',
+                '(': '(', ')': ')'
+            };
+            if ('0123456789'.includes(e.key)) handleInput(e.key);
+            else if (map[e.key]) handleInput(map[e.key]);
+        });
+
+        // Sternenstaub Animation
+        function starBurst(evt) {
+            let x, y;
+            if (evt.touches && evt.touches[0]) {
+                const rect = evt.target.getBoundingClientRect();
+                x = evt.touches[0].clientX - rect.left;
+                y = evt.touches[0].clientY - rect.top;
+            } else if (evt.clientX !== undefined) {
+                x = evt.clientX - evt.target.getBoundingClientRect().left;
+                y = evt.clientY - evt.target.getBoundingClientRect().top;
+            } else {
+                x = Math.random() * 100 + 100;
+                y = Math.random() * 30 + 50;
+            }
+            for (let i = 0; i < 8; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = (x + Math.cos(i * 2 * Math.PI / 8) * 24 + 110) + 'px';
+                star.style.top = (y + Math.sin(i * 2 * Math.PI / 8) * 22 + 35) + 'px';
+                star.style.animationDelay = (Math.random() * 0.2) + 's';
+                document.body.appendChild(star);
+                setTimeout(() => { star.remove(); }, 1300);
+            }
+        }
+    </script>
+</body>
+</html>

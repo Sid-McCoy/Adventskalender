@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sliding Puzzle – Tür 8</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1f1c2c, #928dab 70%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Montserrat', Arial, sans-serif;
+            color: #fff;
+        }
+        h1 {
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            font-size: 2.2rem;
+            text-shadow: 2px 2px 8px #0004;
+        }
+        #puzzle-container {
+            display: grid;
+            grid-template-columns: repeat(4, 70px);
+            grid-template-rows: repeat(4, 70px);
+            gap: 6px;
+            background: #fff2;
+            border-radius: 16px;
+            padding: 10px;
+            box-shadow: 0 8px 32px #1a163055;
+            margin-bottom: 12px;
+            user-select: none;
+        }
+        .tile {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            border-radius: 10px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #344;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 12px #0002;
+            transition: box-shadow 0.18s, background 0.18s, transform 0.09s;
+            position: relative;
+            cursor: pointer;
+            outline: none;
+        }
+        .tile.movable {
+            background: linear-gradient(135deg, #b2f7ef 0%, #eef6fc 100%);
+            color: #008b8b;
+            box-shadow: 0 5px 18px #00cfd52a;
+            transform: scale(1.05);
+        }
+        .tile.empty {
+            background: none;
+            box-shadow: none;
+            cursor: default;
+        }
+        #success-message {
+            font-size: 1.25rem;
+            margin-top: 7px;
+            opacity: 0;
+            transition: opacity 0.6s;
+            text-align: center;
+        }
+        #success-message.visible {
+            opacity: 1;
+            animation: tada 0.7s;
+        }
+        @keyframes tada {
+            10%, 90% { transform: scale(1.06) rotate(-2deg);}
+            30%, 70% { transform: scale(1.11) rotate(2deg);}
+            50% { transform: scale(1.18) rotate(-3deg);}
+        }
+        .confetti {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 999;
+        }
+        @media (max-width: 500px) {
+            #puzzle-container {
+                grid-template-columns: repeat(4, 17vw);
+                grid-template-rows: repeat(4, 17vw);
+            }
+            .tile { width: 17vw; height: 17vw; font-size: 5vw; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🧩 Sliding Puzzle<br>Tür 8</h1>
+    <div id="puzzle-container"></div>
+    <div id="success-message">Stark! Du hast das Puzzle gelöst 🎉</div>
+    <canvas class="confetti" id="confetti"></canvas>
+    <script>
+    const size = 4; // 4x4 Feld
+    let tiles = [];
+    let emptyIdx = size*size - 1; // Letztes Feld ist leer
+
+    // Erzeuge eine lösbare Puzzle-Anordnung
+    function createSolvableTiles() {
+        do {
+            tiles = Array.from({length: size*size}, (_, i) => i+1);
+            tiles[size*size - 1] = 0; // Letztes Feld leer
+            shuffle(tiles);
+            emptyIdx = tiles.indexOf(0);
+        } while (!isSolvable(tiles) || isSolved());
+    }
+
+    // Fisher-Yates Shuffle
+    function shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            let j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+    }
+
+    // Prüft, ob das Puzzle lösbar ist (Inversionsregel)
+    function isSolvable(arr) {
+        let invCount = 0;
+        for (let i = 0; i < arr.length; i++) {
+            for (let j = i + 1; j < arr.length; j++) {
+                if (arr[i] && arr[j] && arr[i] > arr[j]) invCount++;
+            }
+        }
+        let emptyRow = Math.floor(arr.indexOf(0) / size);
+        // Bei gerader Größe: leere Reihe von unten (0 = unten)
+        if (size % 2 === 0) {
+            return ((invCount + size - emptyRow) % 2 === 0);
+        } else {
+            return (invCount % 2 === 0);
+        }
+    }
+
+    // Prüft, ob Puzzle gelöst ist
+    function isSolved() {
+        for (let i = 0; i < tiles.length-1; i++) {
+            if (tiles[i] !== i+1) return false;
+        }
+        return tiles[tiles.length-1] === 0;
+    }
+
+    function drawPuzzle() {
+        const container = document.getElementById("puzzle-container");
+        container.innerHTML = "";
+        tiles.forEach((tile, idx) => {
+            const div = document.createElement("div");
+            div.className = "tile";
+            if (tile === 0) {
+                div.classList.add("empty");
+                div.setAttribute("tabindex", "-1");
+                container.appendChild(div);
+                return;
+            }
+            if (isMovable(idx)) div.classList.add("movable");
+            div.textContent = tile;
+            div.setAttribute("tabindex", "0");
+            div.addEventListener("click", () => tryMove(idx));
+            div.addEventListener("keydown", (e) => {
+                if (["Enter"," "].includes(e.key)) tryMove(idx);
+            });
+            container.appendChild(div);
+        });
+    }
+
+    // Prüft, ob ein Feld neben dem leeren ist
+    function isMovable(idx) {
+        let eRow = Math.floor(emptyIdx / size), eCol = emptyIdx % size;
+        let iRow = Math.floor(idx / size), iCol = idx % size;
+        return (
+            (eRow === iRow && Math.abs(eCol - iCol) === 1) ||
+            (eCol === iCol && Math.abs(eRow - iRow) === 1)
+        );
+    }
+
+    function tryMove(idx) {
+        if (!isMovable(idx)) return;
+        [tiles[emptyIdx], tiles[idx]] = [tiles[idx], tiles[emptyIdx]];
+        emptyIdx = idx;
+        drawPuzzle();
+        if (isSolved()) showSuccess();
+    }
+
+    function showSuccess() {
+        const msg = document.getElementById("success-message");
+        msg.classList.add("visible");
+        confettiBlast();
+        setTimeout(() => msg.classList.remove("visible"), 4000);
+    }
+
+    // Konfetti Animation (canvas)
+    function confettiBlast() {
+        const canvas = document.getElementById('confetti');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        let particles = [];
+        for(let i=0;i<140;i++) {
+            particles.push({
+                x: Math.random()*canvas.width,
+                y: -20,
+                r: 5 + Math.random()*9,
+                c: `hsl(${Math.random()*360},90%,60%)`,
+                vx: -2 + Math.random()*4,
+                vy: 1.6 + Math.random()*2.7,
+                ay: 0.12+Math.random()*0.07,
+                rot: Math.random()*2*Math.PI
+            });
+        }
+        let frame = 0;
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            particles.forEach(p => {
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rot);
+                ctx.fillStyle = p.c;
+                ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r);
+                ctx.restore();
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += p.ay;
+                p.rot += 0.04;
+            });
+            frame++;
+            if (frame < 90) requestAnimationFrame(draw);
+            else setTimeout(()=>ctx.clearRect(0,0,canvas.width,canvas.height), 800);
+        }
+        draw();
+    }
+
+    // Init
+    createSolvableTiles();
+    drawPuzzle();
+    </script>
+</body>
+</html>

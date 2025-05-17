@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Advents-Karaoke 🎤</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: radial-gradient(ellipse at center, #fff7e6 0%, #ffcd94 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .karaoke-container {
+            background: rgba(255,255,255,0.8);
+            border-radius: 2rem;
+            box-shadow: 0 8px 40px rgba(180,90,0,0.2);
+            max-width: 600px;
+            width: 95vw;
+            padding: 2rem 1.5rem;
+            margin: 2rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #b86b00;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            text-shadow: 1px 1px 4px #fff6;
+        }
+        select, button {
+            font-size: 1.1rem;
+            border-radius: 1em;
+            border: none;
+            padding: 0.5em 1.3em;
+            margin: 0.5em;
+            box-shadow: 0 2px 8px #fff8, 0 1px 2px #b86b0033;
+            cursor: pointer;
+            background: #fff6e3;
+            color: #ba7700;
+            transition: background 0.2s;
+        }
+        button:active {
+            background: #ffcd94;
+        }
+        .lyrics {
+            font-size: 1.8rem;
+            font-weight: 500;
+            min-height: 3.5em;
+            margin: 2rem 0 1rem 0;
+            text-align: center;
+            color: #c57000;
+        }
+        .highlight {
+            color: #e42c2c;
+            text-shadow: 0 0 6px #fff;
+            background: linear-gradient(90deg, #ffe, #ffb0b0 80%, #fff0);
+            border-radius: 0.5em;
+            padding: 0.05em 0.3em;
+        }
+        .song-list {
+            margin-bottom: 0.6em;
+        }
+        .note {
+            font-size: 0.96em;
+            color: #b88e43;
+            margin-top: 1em;
+        }
+        @media (max-width: 520px) {
+            .karaoke-container {
+                padding: 1rem 0.5rem;
+            }
+            .lyrics {
+                font-size: 1.15rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="karaoke-container">
+        <h1>🎤 Advents-Karaoke</h1>
+        <div class="song-list">
+            <select id="songSelector">
+                <option value="0">🎵 O Tannenbaum</option>
+                <option value="1">🎶 Stille Nacht</option>
+                <option value="2">🦌 Jingle Bells</option>
+            </select>
+            <button id="startBtn">▶️ Start</button>
+            <button id="stopBtn" disabled>⏹️ Stop</button>
+        </div>
+        <div class="lyrics" id="lyrics">Wähle ein Lied und drücke „Start“!</div>
+        <div class="note">
+            Musik im Retro-Style – Viel Spaß beim Mitsingen!<br>
+            <span style="font-size:0.8em;">Hinweis: Die Melodie ist nur ein einfacher Piepton, damit es überall funktioniert.</span>
+        </div>
+    </div>
+    <script>
+        // Karaoke-Daten
+        const songs = [
+            {
+                title: "O Tannenbaum",
+                // Jede Zeile: [Text, Länge in ms, Melodie (optional, als Array von [freq, ms])]
+                lyrics: [
+                    ["O Tannenbaum, o Tannenbaum,", 2100, [[392,320],[440,240],[392,240],[349,320],[392,640]]],
+                    ["wie grün sind deine Blätter!", 2100, [[440,320],[392,240],[349,240],[330,480],[392,320]]],
+                    ["Du grünst nicht nur zur Sommerzeit,", 2300, [[440,240],[392,320],[392,320],[349,160],[349,160],[392,800]]],
+                    ["nein auch im Winter, wenn es schneit.", 2400, [[392,320],[349,240],[392,320],[349,320],[330,640]]],
+                    ["O Tannenbaum, o Tannenbaum,", 2100, [[392,320],[440,240],[392,240],[349,320],[392,640]]],
+                    ["wie grün sind deine Blätter!", 2100, [[440,320],[392,240],[349,240],[330,480],[392,320]]],
+                ]
+            },
+            {
+                title: "Stille Nacht",
+                lyrics: [
+                    ["Stille Nacht, heilige Nacht!", 2100, [[392,320],[440,320],[392,320],[349,320],[392,640]]],
+                    ["Alles schläft; einsam wacht", 2100, [[440,320],[392,240],[349,240],[330,480],[392,320]]],
+                    ["Nur das traute, hochheilige Paar.", 2300, [[440,240],[392,320],[392,320],[349,320],[392,800]]],
+                    ["Holder Knabe im lockigen Haar.", 2200, [[392,320],[349,240],[392,320],[349,320],[330,640]]],
+                    ["Schlaf in himmlischer Ruh!", 1600, [[392,320],[440,240],[392,240],[349,320]]],
+                    ["Schlaf in himmlischer Ruh!", 1600, [[440,320],[392,240],[349,240],[330,480]]],
+                ]
+            },
+            {
+                title: "Jingle Bells",
+                lyrics: [
+                    ["Jingle bells, jingle bells,", 1800, [[440,200],[440,200],[440,400],[440,200],[440,200],[440,400]]],
+                    ["jingle all the way!", 1700, [[440,200],[494,200],[392,200],[415,200],[440,800]]],
+                    ["Oh, what fun it is to ride", 2100, [[494,200],[494,200],[494,400],[494,200],[494,200],[494,400]]],
+                    ["in a one horse open sleigh!", 2100, [[494,200],[523,200],[440,200],[494,200],[494,800]]],
+                ]
+            }
+        ];
+
+        const lyricsElem = document.getElementById('lyrics');
+        const songSelector = document.getElementById('songSelector');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+
+        let karaokeTimeout = null, isPlaying = false, currLine = 0, selectedSong = 0, audioCtx = null;
+
+        function resetKaraoke() {
+            isPlaying = false;
+            currLine = 0;
+            clearTimeout(karaokeTimeout);
+            lyricsElem.innerHTML = "Wähle ein Lied und drücke „Start“!";
+            stopBtn.disabled = true;
+            startBtn.disabled = false;
+        }
+
+        function playKaraoke(songIdx) {
+            isPlaying = true;
+            currLine = 0;
+            stopBtn.disabled = false;
+            startBtn.disabled = true;
+            runLine(songIdx, currLine);
+        }
+
+        function runLine(songIdx, lineIdx) {
+            const song = songs[songIdx];
+            if (!isPlaying || lineIdx >= song.lyrics.length) {
+                lyricsElem.innerHTML = `<span style="color:green;">Fertig! 🎉</span>`;
+                resetAudio();
+                resetKaraoke();
+                return;
+            }
+            const [line, len, melody] = song.lyrics[lineIdx];
+            showAnimatedLine(line, len);
+            playMelody(melody);
+
+            karaokeTimeout = setTimeout(() => {
+                currLine++;
+                runLine(songIdx, currLine);
+            }, len + 400);
+        }
+
+        function showAnimatedLine(line, duration) {
+            // Wortweise Animation (Highlight)
+            let words = line.split(' ');
+            let html = "";
+            let curr = 0;
+            function step() {
+                html = words.map((w, idx) =>
+                    idx === curr ? `<span class="highlight">${w}</span>` : w
+                ).join(' ');
+                lyricsElem.innerHTML = html;
+                curr++;
+                if (curr < words.length) {
+                    setTimeout(step, duration / words.length);
+                }
+            }
+            step();
+        }
+
+        function playMelody(melody) {
+            if (!window.AudioContext && !window.webkitAudioContext) return;
+            resetAudio();
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            let t = audioCtx.currentTime;
+            for (const [freq, ms] of (melody||[])) {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.value = freq;
+                osc.type = 'square';
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.16, t);
+                gain.gain.linearRampToValueAtTime(0, t + ms/1000);
+                osc.start(t);
+                osc.stop(t + ms/1000);
+                t += ms/1000;
+            }
+        }
+
+        function resetAudio() {
+            if (audioCtx) {
+                try { audioCtx.close(); } catch (e) {}
+                audioCtx = null;
+            }
+        }
+
+        startBtn.onclick = () => {
+            selectedSong = parseInt(songSelector.value);
+            lyricsElem.innerHTML = "";
+            playKaraoke(selectedSong);
+        };
+        stopBtn.onclick = () => {
+            isPlaying = false;
+            clearTimeout(karaokeTimeout);
+            resetAudio();
+            lyricsElem.innerHTML = "Gestoppt.";
+            stopBtn.disabled = true;
+            startBtn.disabled = false;
+        };
+        songSelector.onchange = resetKaraoke;
+
+        window.onunload = resetAudio;
+    </script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Virtuelle Schneekugel</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(180deg, #3a5a86 0%, #e0f7fa 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      overflow: hidden;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .snowglobe {
+      position: relative;
+      width: min(90vw, 420px);
+      height: min(90vw, 420px);
+      background: transparent;
+      margin-bottom: 30px;
+      user-select: none;
+    }
+    .glass {
+      position: absolute;
+      left: 0; top: 0; right: 0; bottom: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle at 60% 30%, #eafaff 40%, #b0e0ff 100%);
+      box-shadow: 0 6px 28px 10px #6b85a880, 0 0 0 8px #e3f5ff88 inset;
+      overflow: hidden;
+      border: 3px solid #f3f3fa;
+      z-index: 2;
+      transition: box-shadow 0.2s;
+    }
+    .glass.shake {
+      box-shadow: 0 0 60px 16px #6ad6ffdd, 0 0 0 8px #e3f5ff99 inset;
+    }
+    .base {
+      position: absolute;
+      left: 10%; right: 10%; bottom: -8%;
+      height: 18%;
+      background: linear-gradient(90deg,#ba8b5e 40%,#e3c391 100%);
+      border-radius: 0 0 40% 40%/0 0 100% 100%;
+      box-shadow: 0 10px 20px #cba06a99;
+      z-index: 3;
+      border-top: 5px solid #fff9;
+    }
+    .surprise {
+      position: absolute;
+      left: 50%; top: 55%;
+      transform: translate(-50%,-50%) scale(0.85);
+      z-index: 4;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s;
+      font-size: 2.5rem;
+      filter: drop-shadow(0 2px 6px #6666ff99);
+      animation: pop-surprise 0.8s cubic-bezier(0.42, 0, 0.58, 1) 1;
+    }
+    .surprise.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    @keyframes pop-surprise {
+      0% { transform: translate(-50%,-50%) scale(0.3) rotate(-30deg);}
+      60%{ transform: translate(-50%,-50%) scale(1.2) rotate(5deg);}
+      100%{transform: translate(-50%,-50%) scale(0.85);}
+    }
+    .button {
+      padding: 16px 36px;
+      background: linear-gradient(90deg, #6ad6ff 40%, #fff 120%);
+      color: #15607a;
+      border: none;
+      border-radius: 2rem;
+      box-shadow: 0 2px 8px #add8e6b0;
+      font-size: 1.2rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      outline: none;
+      margin-bottom: 10px;
+      letter-spacing: 1px;
+    }
+    .button:active {
+      background: linear-gradient(90deg, #89e9e9 40%, #e0f7fa 100%);
+      transform: scale(0.98);
+    }
+    .hint {
+      color: #fff;
+      text-shadow: 1px 2px 7px #15607aaa;
+      margin-top: 12px;
+      font-size: 1rem;
+    }
+    @media (max-width:500px) {
+      .snowglobe { width: 98vw; height: 98vw;}
+      .glass, .base { font-size: 14vw;}
+      .surprise { font-size: 2.2rem;}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="snowglobe" id="snowglobe">
+      <div class="glass" id="glass"></div>
+      <canvas id="snow" width="420" height="420" style="position:absolute;left:0;top:0;width:100%;height:100%;z-index:2;pointer-events:none;"></canvas>
+      <div class="base"></div>
+      <div class="surprise" id="surprise"></div>
+    </div>
+    <button class="button" id="shakeBtn">Schütteln!</button>
+    <div class="hint">Tippe oder ziehe die Schneekugel für mehr Magie ✨</div>
+  </div>
+  <script>
+    // SNOW PARTICLES
+    const canvas = document.getElementById('snow');
+    const ctx = canvas.getContext('2d');
+    let W = canvas.width = canvas.offsetWidth, H = canvas.height = canvas.offsetHeight;
+    let snowflakes = [];
+    function randomSnowflake() {
+      return {
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: 1 + Math.random() * 3,
+        d: 1 + Math.random() * 1.5,
+        alpha: 0.8 + Math.random() * 0.2
+      }
+    }
+    function createSnowflakes() {
+      snowflakes = [];
+      for(let i=0;i<60;i++) snowflakes.push(randomSnowflake());
+    }
+    function drawSnowflakes() {
+      ctx.clearRect(0,0,W,H);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(W/2,H/2,W/2-3,0,2*Math.PI);
+      ctx.clip();
+      for(let flake of snowflakes){
+        ctx.globalAlpha = flake.alpha;
+        ctx.beginPath();
+        ctx.arc(flake.x, flake.y, flake.r, 0, 2 * Math.PI);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+    function moveSnowflakes(shake=0) {
+      for(let flake of snowflakes){
+        flake.y += flake.d + (shake ? Math.random()*shake : 0);
+        flake.x += Math.sin(flake.y*0.02) * (0.7+shake*0.07);
+        if(flake.y > H-8) {flake.y = -8; flake.x = Math.random()*W;}
+        if(flake.x < 0) flake.x = W-1;
+        if(flake.x > W) flake.x = 1;
+      }
+    }
+    // HANDLE RESIZE
+    function resize() {
+      W = canvas.width = canvas.offsetWidth;
+      H = canvas.height = canvas.offsetHeight;
+      createSnowflakes();
+    }
+    window.addEventListener('resize', resize);
+
+    // SURPRISES
+    const surprises = [
+      '🎅 Ho Ho Ho!',
+      '🦌 Rudolf winkt!',
+      '🎁 Ein Geschenk erscheint!',
+      '🌟 Frohe Weihnachten!',
+      '🍪 Kekse für dich!',
+      '❄️ Winterzauber!',
+      '⛄ Schau! Ein Schneemann!',
+      '🧑‍🎄 Weihnachtsgrüße!',
+      '🕯️ Advent, Advent...',
+      '🎄 Baum geschmückt!',
+      '🔔 Klingeling!',
+      '💖 Du bist magisch!',
+      '🪄✨ Zauberei!'
+    ];
+
+    let shakeLevel = 0;
+    let shaking = false;
+    let shakeTimeout;
+    let lastSurprise = null;
+    const glass = document.getElementById('glass');
+    const surpriseDiv = document.getElementById('surprise');
+    function showSurprise() {
+      let idx;
+      do { idx = Math.floor(Math.random()*surprises.length); } while(surprises[idx] === lastSurprise);
+      lastSurprise = surprises[idx];
+      surpriseDiv.textContent = surprises[idx];
+      surpriseDiv.classList.add('show');
+      setTimeout(()=>surpriseDiv.classList.remove('show'), 2100);
+    }
+    function doShake(strong=false) {
+      if(shaking) return;
+      shaking = true;
+      glass.classList.add('shake');
+      let shakePower = strong ? 14 : 8;
+      shakeLevel = shakePower;
+      showSurprise();
+      if(shakeTimeout) clearTimeout(shakeTimeout);
+      shakeTimeout = setTimeout(()=>{
+        glass.classList.remove('shake');
+        shakeLevel = 0;
+        shaking = false;
+      }, 1500);
+    }
+    // Button click
+    document.getElementById('shakeBtn').addEventListener('click', ()=>doShake());
+    // Touch/drag (mobile)
+    let touchStart = null;
+    document.getElementById('snowglobe').addEventListener('touchstart', e=>{
+      if(e.touches.length===1) touchStart = {x:e.touches[0].clientX, y:e.touches[0].clientY};
+    });
+    document.getElementById('snowglobe').addEventListener('touchmove', e=>{
+      if(touchStart) {
+        const dx = e.touches[0].clientX - touchStart.x;
+        const dy = e.touches[0].clientY - touchStart.y;
+        if(Math.abs(dx)+Math.abs(dy)>40) {
+          doShake(true);
+          touchStart = null;
+        }
+      }
+    });
+    document.getElementById('snowglobe').addEventListener('touchend', ()=>{touchStart=null;});
+    // Mouse drag (desktop)
+    let mouseDown = false, mouseMoveSum = 0;
+    document.getElementById('snowglobe').addEventListener('mousedown', e=>{
+      mouseDown = true; mouseMoveSum=0;
+    });
+    document.getElementById('snowglobe').addEventListener('mousemove', e=>{
+      if(mouseDown) {
+        mouseMoveSum += Math.abs(e.movementX)+Math.abs(e.movementY);
+        if(mouseMoveSum > 40) { doShake(true); mouseDown=false;}
+      }
+    });
+    document.getElementById('snowglobe').addEventListener('mouseup', ()=>{mouseDown=false; mouseMoveSum=0;});
+    // Animation Loop
+    function animate() {
+      moveSnowflakes(shakeLevel);
+      drawSnowflakes();
+      requestAnimationFrame(animate);
+    }
+    // INIT
+    resize();
+    createSnowflakes();
+    animate();
+  </script>
+</body>
+</html>

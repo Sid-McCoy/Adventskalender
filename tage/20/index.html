@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schneeballwurf-Spiel</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: linear-gradient(#8ecae6, #219ebc 90%);
+      overflow: hidden;
+    }
+    #gameArea {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100vw; height: 100vh;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+    #scoreboard {
+      position: absolute;
+      top: 20px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 2rem;
+      color: #fff;
+      font-family: 'Comic Sans MS', 'Comic Sans', cursive, Arial;
+      text-shadow: 2px 2px 8px #023047;
+      z-index: 10;
+      background: rgba(0,0,0,0.20);
+      padding: 0.5em 1.2em;
+      border-radius: 1em;
+      user-select: none;
+    }
+    #timer {
+      position: absolute;
+      top: 20px; right: 40px;
+      font-size: 1.5rem;
+      color: #fff;
+      background: rgba(0,0,0,0.15);
+      padding: 0.4em 1em;
+      border-radius: 0.8em;
+      z-index: 10;
+      font-family: inherit;
+      user-select: none;
+    }
+    #startBtn, #restartBtn {
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      padding: 1em 2em;
+      font-size: 1.5rem;
+      color: #fff;
+      background: #219ebc;
+      border: none;
+      border-radius: 2em;
+      cursor: pointer;
+      font-family: inherit;
+      box-shadow: 0 4px 24px #02304755;
+      z-index: 20;
+      transition: background 0.2s;
+    }
+    #startBtn:hover, #restartBtn:hover { background: #126782; }
+    #gameOver {
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #fff;
+      font-size: 2.2rem;
+      text-shadow: 2px 2px 12px #02304799;
+      z-index: 20;
+      text-align: center;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameArea"></div>
+  <div id="scoreboard" style="display:none;">Punkte: 0</div>
+  <div id="timer" style="display:none;">Zeit: 30</div>
+  <button id="startBtn">🎯 Schneeball werfen!</button>
+  <div id="gameOver" style="display:none;">
+    <div id="finalScore"></div>
+    <button id="restartBtn">🔄 Nochmal spielen</button>
+  </div>
+  <audio id="hitSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_11e5e54851.mp3"></audio>
+  <audio id="throwSound" src="https://cdn.pixabay.com/audio/2022/02/23/audio_115b5b9f1b.mp3"></audio>
+  <script>
+    const area = document.getElementById('gameArea');
+    const scoreboard = document.getElementById('scoreboard');
+    const timerDisplay = document.getElementById('timer');
+    const startBtn = document.getElementById('startBtn');
+    const gameOverDiv = document.getElementById('gameOver');
+    const finalScore = document.getElementById('finalScore');
+    const restartBtn = document.getElementById('restartBtn');
+    const hitSound = document.getElementById('hitSound');
+    const throwSound = document.getElementById('throwSound');
+
+    let score = 0, time = 30, gameActive = false, target = null, targetTimeout = null, snowballs = [];
+    let snowflakes = [];
+
+    // Helper: Random integer in range
+    function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+    // Spawn animated snowflakes (Atmosphäre)
+    function spawnSnowflakes() {
+      for (let i = 0; i < 35; i++) {
+        snowflakes.push({
+          x: Math.random() * window.innerWidth,
+          y: Math.random() * window.innerHeight,
+          r: rnd(2,6),
+          s: Math.random() * 1 + 0.5,
+          d: Math.random() * Math.PI * 2,
+        });
+      }
+    }
+    function drawSnowflakes(ctx) {
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = "#fff";
+      for (const f of snowflakes) {
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r, 0, 2*Math.PI);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    function moveSnowflakes() {
+      for (const f of snowflakes) {
+        f.y += f.s;
+        f.x += Math.sin(f.d) * 0.5;
+        if (f.y > window.innerHeight) {
+          f.y = -f.r;
+          f.x = Math.random() * window.innerWidth;
+        }
+      }
+    }
+
+    // Draw target (Schneemann, Geschenk, Stern)
+    function drawTarget(ctx, t) {
+      // Style abwechselnd
+      const cx = t.x, cy = t.y, r = t.r;
+      if (t.type === 0) { // Schneemann
+        // Body
+        ctx.fillStyle = "#fff";
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2*Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, cy - r*1.1, r*0.7, 0, 2*Math.PI); ctx.fill();
+        // Eyes
+        ctx.fillStyle = "#222";
+        ctx.beginPath(); ctx.arc(cx - r*0.3, cy - r*1.2, r*0.13, 0, 2*Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + r*0.3, cy - r*1.2, r*0.13, 0, 2*Math.PI); ctx.fill();
+        // Carrot nose
+        ctx.save(); ctx.strokeStyle="#ff9800"; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.moveTo(cx, cy - r*1.1); ctx.lineTo(cx, cy - r*1.1 + 16); ctx.stroke();
+        ctx.restore();
+        // Hat
+        ctx.save(); ctx.fillStyle="#444";
+        ctx.fillRect(cx - r*0.5, cy - r*1.75, r, r*0.25);
+        ctx.fillRect(cx - r*0.32, cy - r*2, r*0.65, r*0.3);
+        ctx.restore();
+      }
+      else if (t.type === 1) { // Geschenk
+        ctx.fillStyle = "#e63946";
+        ctx.beginPath(); ctx.rect(cx - r, cy - r, r*2, r*2); ctx.fill();
+        ctx.strokeStyle="#fff"; ctx.lineWidth=6;
+        ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.stroke();
+        // Bow
+        ctx.strokeStyle="#fbc531"; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.arc(cx, cy - r*0.7, r*0.4, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy - r*0.7, r*0.15, 0, Math.PI*2); ctx.stroke();
+      }
+      else { // Stern
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(t.angle || 0);
+        ctx.beginPath();
+        ctx.moveTo(0, -r);
+        for (let i = 1; i < 10; i++) {
+          const angle = i * Math.PI / 5;
+          ctx.lineTo(
+            Math.sin(angle) * (i % 2 === 0 ? r : r * 0.45),
+            -Math.cos(angle) * (i % 2 === 0 ? r : r * 0.45)
+          );
+        }
+        ctx.closePath();
+        ctx.fillStyle = "#ffe066";
+        ctx.shadowColor="#fff";
+        ctx.shadowBlur=15;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    function spawnTarget() {
+      const margin = 70, r = rnd(35, 55);
+      let t = {
+        x: rnd(margin, window.innerWidth - margin),
+        y: rnd(margin+40, window.innerHeight - margin),
+        r,
+        type: rnd(0,2),
+        angle: Math.random() * Math.PI * 2
+      };
+      target = t;
+      if (targetTimeout) clearTimeout(targetTimeout);
+      // Ziel bleibt 1.2 bis 2.5 Sek
+      targetTimeout = setTimeout(() => { target = null; setTimeout(spawnTarget, rnd(700, 1500)); }, rnd(1200,2500));
+    }
+
+    function throwSnowball(x, y) {
+      if (!gameActive) return;
+      throwSound.currentTime = 0; throwSound.play();
+      snowballs.push({
+        x: window.innerWidth/2,
+        y: window.innerHeight,
+        tx: x, ty: y,
+        r: 26,
+        progress: 0,
+        hit: false
+      });
+    }
+
+    function checkHit(snowball) {
+      if (target) {
+        const dx = target.x - snowball.x;
+        const dy = target.y - snowball.y;
+        if (Math.sqrt(dx*dx + dy*dy) < target.r + snowball.r - 8) {
+          score++;
+          scoreboard.textContent = "Punkte: " + score;
+          hitSound.currentTime = 0; hitSound.play();
+          target = null;
+          if (targetTimeout) clearTimeout(targetTimeout);
+          setTimeout(spawnTarget, rnd(800,1400));
+          snowball.hit = true;
+        }
+      }
+    }
+
+    // GAMELOOP
+    let canvas, ctx, animationFrame;
+    function gameLoop() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      drawSnowflakes(ctx);
+      moveSnowflakes();
+      // Ziel zeichnen
+      if (target) drawTarget(ctx, target);
+      // Schneebälle bewegen & zeichnen
+      for (let i = snowballs.length-1; i >= 0; i--) {
+        let sb = snowballs[i];
+        sb.progress += 0.045;
+        sb.x = window.innerWidth/2 + (sb.tx-window.innerWidth/2) * sb.progress;
+        sb.y = window.innerHeight + (sb.ty-window.innerHeight) * sb.progress;
+        // Schneeball
+        ctx.save();
+        ctx.globalAlpha = sb.hit ? 0.5 : 0.85;
+        ctx.beginPath(); ctx.arc(sb.x, sb.y, sb.r, 0, 2*Math.PI);
+        ctx.fillStyle="#f3f6fb"; ctx.shadowColor="#fff";
+        ctx.shadowBlur=sb.hit?3:15;
+        ctx.fill();
+        ctx.restore();
+        // Nach Hit oder Ende löschen
+        if (sb.progress >= 1 || sb.hit) snowballs.splice(i,1);
+        else if (!sb.hit) checkHit(sb);
+      }
+      animationFrame = requestAnimationFrame(gameLoop);
+    }
+
+    function startGame() {
+      score = 0; time = 30; gameActive = true; target = null; snowballs = [];
+      scoreboard.textContent = "Punkte: 0";
+      scoreboard.style.display = 'block';
+      timerDisplay.style.display = 'block';
+      gameOverDiv.style.display = 'none';
+      startBtn.style.display = 'none';
+      restartBtn.style.display = 'none';
+      // Set canvas size
+      if (!canvas) {
+        canvas = document.createElement('canvas');
+        ctx = canvas.getContext('2d');
+        area.appendChild(canvas);
+      }
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      snowflakes = [];
+      spawnSnowflakes();
+      spawnTarget();
+      animationFrame = requestAnimationFrame(gameLoop);
+      // Timer runterzählen
+      let gameTimer = setInterval(() => {
+        time--;
+        timerDisplay.textContent = "Zeit: " + time;
+        if (time <= 0) {
+          clearInterval(gameTimer);
+          endGame();
+        }
+      }, 1000);
+      timerDisplay.textContent = "Zeit: 30";
+    }
+
+    function endGame() {
+      gameActive = false;
+      scoreboard.style.display = 'none';
+      timerDisplay.style.display = 'none';
+      gameOverDiv.style.display = 'block';
+      finalScore.innerHTML = `🎉<br>Du hast <b>${score}</b> Punkt${score==1?"":"e"} erzielt!`;
+      restartBtn.style.display = 'inline-block';
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+    }
+
+    // Event Listener
+    startBtn.onclick = () => startGame();
+    restartBtn.onclick = () => startGame();
+    window.addEventListener('resize', () => {
+      if (canvas) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+    });
+
+    // Maus/Tap zum Werfen
+    area.addEventListener('mousedown', e => {
+      if (!gameActive || !canvas) return;
+      throwSnowball(e.clientX, e.clientY);
+    });
+    area.addEventListener('touchstart', e => {
+      if (!gameActive || !canvas) return;
+      let t = e.touches[0];
+      throwSnowball(t.clientX, t.clientY);
+    });
+  </script>
+</body>
+</html>

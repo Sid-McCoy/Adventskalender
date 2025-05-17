@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tür 18 – Schneeflocken Animation</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #191970 0%, #87cefa 100%);
+        }
+        body {
+            width: 100vw;
+            height: 100vh;
+        }
+        .winter-title {
+            position: absolute;
+            top: 5%;
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            font-family: 'Segoe Script', cursive;
+            font-size: 2.5rem;
+            text-shadow: 0 4px 24px #003366, 0 1px 2px #222;
+            letter-spacing: 2px;
+            z-index: 10;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="winter-title">❄️ Frohe Adventszeit! ❄️</div>
+    <canvas id="snow"></canvas>
+    <script>
+        const canvas = document.getElementById('snow');
+        const ctx = canvas.getContext('2d');
+
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+
+        // Snowflake settings
+        const SNOWFLAKE_COUNT = Math.floor(width / 8); // Responsive density
+        const snowflakes = [];
+
+        function randomBetween(a, b) {
+            return a + Math.random() * (b - a);
+        }
+
+        function createSnowflake() {
+            const size = randomBetween(5, 14);
+            return {
+                x: randomBetween(0, width),
+                y: randomBetween(-height, 0),
+                r: size,
+                speedY: randomBetween(0.7, 2.2) * (size / 12),
+                speedX: randomBetween(-0.4, 0.4),
+                opacity: randomBetween(0.7, 1),
+                angle: randomBetween(0, 2 * Math.PI),
+                spin: randomBetween(-0.02, 0.02)
+            };
+        }
+
+        function drawSnowflake(sf) {
+            ctx.save();
+            ctx.globalAlpha = sf.opacity;
+            ctx.translate(sf.x, sf.y);
+            ctx.rotate(sf.angle);
+            // Draw a stylized snowflake
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                ctx.moveTo(0, 0);
+                ctx.lineTo(0, sf.r);
+                ctx.translate(0, sf.r * 0.6);
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-sf.r * 0.15, sf.r * 0.2);
+                ctx.moveTo(0, 0);
+                ctx.lineTo(sf.r * 0.15, sf.r * 0.2);
+                ctx.translate(0, -sf.r * 0.6);
+                ctx.rotate(Math.PI / 3);
+            }
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 1.5 + sf.r / 15;
+            ctx.shadowColor = "#eef8ff";
+            ctx.shadowBlur = 8;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function updateSnowflake(sf) {
+            sf.x += sf.speedX;
+            sf.y += sf.speedY;
+            sf.angle += sf.spin;
+            // Respawn if out of screen
+            if (sf.y > height + 12 || sf.x < -20 || sf.x > width + 20) {
+                Object.assign(sf, createSnowflake(), {y: randomBetween(-30, -10)});
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, width, height);
+            for (const sf of snowflakes) {
+                updateSnowflake(sf);
+                drawSnowflake(sf);
+            }
+            requestAnimationFrame(render);
+        }
+
+        // Init snowflakes
+        function init() {
+            snowflakes.length = 0;
+            for (let i = 0; i < SNOWFLAKE_COUNT; i++) {
+                snowflakes.push(createSnowflake());
+            }
+        }
+        init();
+
+        // Responsive resizing
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            init();
+        });
+
+        render();
+    </script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Tür 21 – Rezept des Tages</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css?family=Quicksand:700,400&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+      min-height: 100vh;
+      font-family: 'Quicksand', Arial, sans-serif;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .card {
+      background: #fff;
+      border-radius: 2rem;
+      box-shadow: 0 8px 32px rgba(60,20,0,0.19);
+      padding: 2rem;
+      max-width: 380px;
+      width: 96vw;
+      animation: pop 0.7s cubic-bezier(.48,-0.28,.37,1.48);
+      position: relative;
+      text-align: center;
+    }
+    @keyframes pop {
+      0% { transform: scale(.7);}
+      100% { transform: scale(1);}
+    }
+    .card h1 {
+      color: #c0392b;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 2px 10px #ffe9c6, 1px 2px 0 #fff8e7;
+    }
+    .card img {
+      width: 120px;
+      height: 120px;
+      border-radius: 1.5rem;
+      box-shadow: 0 2px 12px #fda08577;
+      object-fit: cover;
+      margin: 1rem auto;
+      display: block;
+    }
+    .ingredients, .steps {
+      text-align: left;
+      margin: 1.5rem 0;
+    }
+    .ingredients ul {
+      margin: 0;
+      padding: 0 0 0 1.2em;
+    }
+    .ingredients li {
+      margin-bottom: 0.3em;
+      font-size: 1.05em;
+    }
+    .steps {
+      background: #fffaf6;
+      border-radius: 1rem;
+      padding: 0.8em 1em;
+      margin-top: 1em;
+      box-shadow: 0 1px 4px #fda08533;
+    }
+    .copy-btn, .new-btn {
+      background: linear-gradient(90deg, #ffb347 0%, #ffcc33 100%);
+      color: #fff;
+      font-weight: bold;
+      border: none;
+      border-radius: 1.5em;
+      padding: 0.7em 1.5em;
+      margin: 0.4em;
+      font-size: 1em;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #fae2c5bb;
+      transition: background 0.2s;
+    }
+    .copy-btn:active, .new-btn:active { background: #e67e22; }
+    .copy-btn.copied { background: #27ae60; color: #fff; }
+    .emoji {
+      font-size: 2em;
+      filter: drop-shadow(0 0 2px #fff6de);
+      margin-bottom: 0.6em;
+      animation: twinkle 1.4s infinite alternate;
+    }
+    @keyframes twinkle {
+      0% { filter: brightness(1.15);}
+      100% { filter: brightness(1.00);}
+    }
+    @media (max-width: 450px) {
+      .card { padding: 1em; border-radius: 1em; }
+      .card img { width: 90px; height: 90px;}
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="emoji" id="emoji">🍪</div>
+  <h1 id="title">Vanillekipferl</h1>
+  <img id="img" src="https://images.unsplash.com/photo-1519864600265-abb214c6cbe7?auto=format&fit=crop&w=400&q=80" alt="Rezept Bild">
+  <div class="ingredients">
+    <strong>Zutaten:</strong>
+    <ul id="ingredients">
+      <li>250g Mehl</li>
+      <li>210g Butter</li>
+      <li>100g gemahlene Mandeln</li>
+      <li>80g Zucker</li>
+      <li>2 Päckchen Vanillezucker</li>
+      <li>Puderzucker zum Wälzen</li>
+    </ul>
+    <button class="copy-btn" onclick="copyIngredients(this)">📋 Zutaten kopieren</button>
+  </div>
+  <div class="steps">
+    <strong>Zubereitung:</strong>
+    <ol id="steps">
+      <li>Mehl, Mandeln, Zucker, Vanillezucker und Butter zu einem Teig kneten.</li>
+      <li>Teig ca. 1 Stunde kaltstellen.</li>
+      <li>Kleine Kipferl formen, auf Backblech legen.</li>
+      <li>Bei 180°C (Ober-/Unterhitze) ca. 12 Min. backen.</li>
+      <li>Noch warm in Puderzucker wälzen.</li>
+    </ol>
+    <button class="copy-btn" onclick="copySteps(this)">📋 Zubereitung kopieren</button>
+  </div>
+  <button class="new-btn" onclick="showRandomRecipe()">🔀 Anderes Rezept</button>
+</div>
+<script>
+const recipes = [
+  {
+    title: "Vanillekipferl",
+    emoji: "🍪",
+    img: "https://images.unsplash.com/photo-1519864600265-abb214c6cbe7?auto=format&fit=crop&w=400&q=80",
+    ingredients: [
+      "250g Mehl",
+      "210g Butter",
+      "100g gemahlene Mandeln",
+      "80g Zucker",
+      "2 Päckchen Vanillezucker",
+      "Puderzucker zum Wälzen"
+    ],
+    steps: [
+      "Mehl, Mandeln, Zucker, Vanillezucker und Butter zu einem Teig kneten.",
+      "Teig ca. 1 Stunde kaltstellen.",
+      "Kleine Kipferl formen, auf Backblech legen.",
+      "Bei 180°C (Ober-/Unterhitze) ca. 12 Min. backen.",
+      "Noch warm in Puderzucker wälzen."
+    ]
+  },
+  {
+    title: "Bratapfel",
+    emoji: "🍏",
+    img: "https://images.unsplash.com/photo-1502741338009-cac2772e18bc?auto=format&fit=crop&w=400&q=80",
+    ingredients: [
+      "4 Äpfel",
+      "4 TL Marzipan",
+      "2 EL Rosinen",
+      "2 EL gehackte Nüsse",
+      "2 TL Honig",
+      "1 TL Zimt",
+      "Butter für die Form"
+    ],
+    steps: [
+      "Äpfel entkernen, Schale oben einritzen.",
+      "Füllung aus Marzipan, Rosinen, Nüssen, Honig & Zimt mischen.",
+      "Äpfel füllen & in gefettete Form stellen.",
+      "Mit etwas Butterflocken belegen.",
+      "Bei 180°C ca. 30 Min. backen."
+    ]
+  },
+  {
+    title: "Zimtsterne",
+    emoji: "⭐",
+    img: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80",
+    ingredients: [
+      "300g gemahlene Mandeln",
+      "100g Puderzucker",
+      "2 TL Zimt",
+      "2 Eiweiß",
+      "1 Prise Salz",
+      "100g Puderzucker (für Glasur)"
+    ],
+    steps: [
+      "Eiweiß steif schlagen, Puderzucker einrühren.",
+      "Mandeln, Zimt und Salz unterheben.",
+      "Teig ausrollen, Sterne ausstechen.",
+      "Mit Glasur bestreichen.",
+      "Bei 150°C ca. 12-15 Min. backen."
+    ]
+  },
+  {
+    title: "Lebkuchen",
+    emoji: "🍫",
+    img: "https://images.unsplash.com/photo-1542831371-d531d36971e6?auto=format&fit=crop&w=400&q=80",
+    ingredients: [
+      "250g Honig",
+      "100g Zucker",
+      "75g Butter",
+      "350g Mehl",
+      "1 Ei",
+      "1 TL Zimt",
+      "1 TL Lebkuchengewürz",
+      "1 TL Backpulver"
+    ],
+    steps: [
+      "Honig, Zucker & Butter erwärmen.",
+      "Mehl, Ei, Gewürze & Backpulver unterkneten.",
+      "Teig ausrollen, Formen ausstechen.",
+      "Bei 180°C ca. 10-12 Min. backen.",
+      "Nach Belieben verzieren."
+    ]
+  }
+];
+
+function showRandomRecipe() {
+  let idx;
+  do { idx = Math.floor(Math.random() * recipes.length); }
+  while (document.getElementById('title').textContent === recipes[idx].title && recipes.length > 1);
+  const recipe = recipes[idx];
+  document.getElementById('title').textContent = recipe.title;
+  document.getElementById('emoji').textContent = recipe.emoji;
+  document.getElementById('img').src = recipe.img;
+  document.getElementById('img').alt = recipe.title + " Bild";
+  // Zutaten
+  const ingrList = document.getElementById('ingredients');
+  ingrList.innerHTML = "";
+  recipe.ingredients.forEach(z => {
+    const li = document.createElement("li");
+    li.textContent = z;
+    ingrList.appendChild(li);
+  });
+  // Steps
+  const stepsList = document.getElementById('steps');
+  stepsList.innerHTML = "";
+  recipe.steps.forEach(s => {
+    const li = document.createElement("li");
+    li.textContent = s;
+    stepsList.appendChild(li);
+  });
+  // Reset copy-Button state
+  document.querySelectorAll('.copy-btn').forEach(btn => btn.classList.remove('copied'));
+}
+function copyIngredients(btn) {
+  const items = Array.from(document.querySelectorAll('#ingredients li')).map(li => li.textContent).join('\n');
+  navigator.clipboard.writeText(items);
+  btn.textContent = "✅ Kopiert!";
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = "📋 Zutaten kopieren"; btn.classList.remove('copied'); }, 1200);
+}
+function copySteps(btn) {
+  const steps = Array.from(document.querySelectorAll('#steps li')).map(li => li.textContent).join('\n');
+  navigator.clipboard.writeText(steps);
+  btn.textContent = "✅ Kopiert!";
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = "📋 Zubereitung kopieren"; btn.classList.remove('copied'); }, 1200);
+}
+</script>
+</body>
+</html>

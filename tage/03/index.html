@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Tür 3 – Tetris</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --bg: #181f2a;
+      --board: #222e3c;
+      --cell: #304060;
+      --tetromino-I: #29b6f6;
+      --tetromino-J: #ff0000;
+      --tetromino-L: #ff9800;
+      --tetromino-O: #fbc02d;
+      --tetromino-S: #66bb6a;
+      --tetromino-T: #ab47bc;
+      --tetromino-Z: #e53935;
+      --shadow: 0 4px 24px 0 rgba(0,0,0,0.3);
+    }
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #1e2430 0%, #252c3d 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #f4f4f4;
+    }
+    .tetris-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: var(--shadow);
+      border-radius: 2rem;
+      background: var(--bg);
+      padding: 1.2rem 2rem 2rem 2rem;
+      max-width: 95vw;
+    }
+    h1 {
+      margin: 0.5em 0 0.2em;
+      font-weight: 700;
+      letter-spacing: 2px;
+      font-size: 2.2rem;
+      text-shadow: 0 4px 16px #0007;
+      color: #ffe082;
+    }
+    canvas {
+      background: var(--board);
+      border-radius: 1.2rem;
+      box-shadow: var(--shadow);
+      margin: 1em 0;
+      display: block;
+      touch-action: none;
+      border: 6px solid #11171f;
+    }
+    .score-box {
+      display: flex;
+      gap: 2.5em;
+      font-size: 1.2rem;
+      margin-bottom: .5em;
+    }
+    .btn-row {
+      display: flex;
+      gap: 1.5em;
+      margin-top: 1em;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .fancy-btn {
+      background: linear-gradient(90deg, #40466a, #0e2437 80%);
+      color: #ffe082;
+      font-weight: 600;
+      border: none;
+      border-radius: 1.2em;
+      box-shadow: 0 2px 12px 0 #0007;
+      font-size: 1.1em;
+      padding: .7em 1.6em;
+      margin: .2em 0;
+      cursor: pointer;
+      transition: 0.1s;
+      outline: none;
+      letter-spacing: 1px;
+      user-select: none;
+    }
+    .fancy-btn:active {
+      transform: scale(0.98);
+      background: #27314d;
+    }
+    .ctrls {
+      display: flex;
+      gap: .7em;
+      margin: 0.5em 0 0 0;
+      flex-wrap: wrap;
+      font-size: 0.99em;
+      color: #a6b0c1;
+    }
+    @media (max-width: 800px) {
+      .tetris-container { padding: .7rem .1rem 1.3rem 1rem; }
+      canvas { width: 98vw !important; height: auto !important; max-width: 97vw !important;}
+    }
+  </style>
+</head>
+<body>
+<div class="tetris-container">
+  <h1>🎄 Tür 3: Tetris</h1>
+  <div class="score-box">
+    <div>Punkte: <span id="score">0</span></div>
+    <div>Level: <span id="level">1</span></div>
+    <div>Linien: <span id="lines">0</span></div>
+  </div>
+  <canvas id="tetris" width="260" height="520"></canvas>
+  <div class="btn-row" id="mobile-controls" style="display:none;">
+    <button class="fancy-btn" id="left">◀️</button>
+    <button class="fancy-btn" id="rotate">🔄</button>
+    <button class="fancy-btn" id="right">▶️</button>
+    <button class="fancy-btn" id="down">⬇️</button>
+    <button class="fancy-btn" id="drop">⏬</button>
+  </div>
+  <div class="ctrls">
+    <span><b>Steuerung:</b></span>
+    <span>Links/Rechts = ← / →</span>
+    <span>Drehen = ↑ oder <b>W</b></span>
+    <span>Schneller = ↓</span>
+    <span>Sofort ablegen = Leertaste</span>
+  </div>
+  <button class="fancy-btn" id="restart" style="margin-top:1em;">Neustart</button>
+</div>
+<script>
+const COLS = 10, ROWS = 20, BLOCK = 26;
+const colors = {
+  I: getComputedStyle(document.documentElement).getPropertyValue('--tetromino-I'),
+  J: getComputedStyle(document.documentElement).getPropertyValue('--tetromino-J'),
+  L: getComputedStyle(document.documentElement).getPropertyValue('--tetromino-L'),
+  O: getComputedStyle(document.documentElement).getPropertyValue('--tetromino-O'),
+  S: getComputedStyle(document.documentElement).getPropertyValue('--tetromino-S'),
+  T: getComputedStyle(document.documentElement).getPropertyValue('--tetromino-T'),
+  Z: getComputedStyle(document.documentElement).getPropertyValue('--tetromino-Z')
+};
+const tetrominoes = {
+  I: [[0,1],[1,1],[2,1],[3,1]],
+  J: [[0,0],[0,1],[1,1],[2,1]],
+  L: [[2,0],[0,1],[1,1],[2,1]],
+  O: [[1,0],[2,0],[1,1],[2,1]],
+  S: [[1,0],[2,0],[0,1],[1,1]],
+  T: [[1,0],[0,1],[1,1],[2,1]],
+  Z: [[0,0],[1,0],[1,1],[2,1]]
+};
+let canvas = document.getElementById('tetris');
+let ctx = canvas.getContext('2d');
+let grid, current, next, gameOver, dropInterval, dropStart, score, lines, level, requestId;
+let isMobile = window.innerWidth < 700;
+if (isMobile) {
+  document.getElementById('mobile-controls').style.display = '';
+  canvas.width = BLOCK * COLS * 1.07;
+  canvas.height = BLOCK * ROWS * 1.04;
+}
+function newGrid() {
+  return Array.from({length: ROWS}, ()=>Array(COLS).fill(''));
+}
+function drawCell(x, y, type, ghost=false) {
+  ctx.save();
+  let color = type && colors[type] || getComputedStyle(document.documentElement).getPropertyValue('--cell');
+  ctx.globalAlpha = ghost ? 0.35 : 1;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(x*BLOCK+2, y*BLOCK+2, BLOCK-4, BLOCK-4, 8);
+  ctx.fill();
+  if(type && !ghost) {
+    ctx.strokeStyle = "#fff4";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x*BLOCK+4, y*BLOCK+4, BLOCK-8, BLOCK-8);
+  }
+  ctx.restore();
+}
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Spielfeld
+  for(let y=0; y<ROWS; y++) {
+    for(let x=0; x<COLS; x++) {
+      drawCell(x,y,grid[y][x]);
+    }
+  }
+  // Shadow/Projection
+  let ghost = {...current, y: getDropY()};
+  for(const [dx,dy] of ghost.shape)
+    drawCell(ghost.x+dx, ghost.y+dy, ghost.type, true);
+  // Aktueller Tetromino
+  for(const [dx,dy] of current.shape)
+    drawCell(current.x+dx, current.y+dy, current.type);
+}
+function spawnTetromino() {
+  const types = Object.keys(tetrominoes);
+  let type = next || types[Math.floor(Math.random()*types.length)];
+  next = types[Math.floor(Math.random()*types.length)];
+  let shape = tetrominoes[type].map(([x,y])=>[x,y]);
+  let x = 3, y = 0;
+  return {type, shape, x, y};
+}
+function rotate(shape) {
+  return shape.map(([x,y])=>[y, -x+Math.max(...shape.map(v=>v[0]))]);
+}
+function collide(piece, newShape = piece.shape, nx=piece.x, ny=piece.y) {
+  for(const [dx,dy] of newShape) {
+    let x = nx+dx, y = ny+dy;
+    if(x<0||x>=COLS||y<0||y>=ROWS) return true;
+    if(y>=0 && grid[y][x]) return true;
+  }
+  return false;
+}
+function merge() {
+  for(const [dx,dy] of current.shape) {
+    if(current.y+dy<0) { gameOver = true; }
+    else grid[current.y+dy][current.x+dx] = current.type;
+  }
+}
+function clearLines() {
+  let cleared = 0;
+  outer: for(let y=ROWS-1; y>=0; y--) {
+    for(let x=0; x<COLS; x++) if(!grid[y][x]) continue outer;
+    grid.splice(y,1);
+    grid.unshift(Array(COLS).fill(''));
+    cleared++; y++;
+  }
+  if(cleared) {
+    lines += cleared;
+    score += [0,40,100,300,1200][cleared] * (level+1);
+    level = Math.floor(lines/10)+1;
+    dropInterval = 750 - (level-1)*55;
+  }
+}
+function move(dx, dy, rotateTry) {
+  let newShape = current.shape, newX = current.x+dx, newY = current.y+dy;
+  if(rotateTry) {
+    newShape = rotate(current.shape);
+    // Wall kick
+    for(let off of [0,-1,1,-2,2]) {
+      if(!collide(current, newShape, current.x+off, current.y)) {
+        current.shape = newShape;
+        current.x += off;
+        draw();
+        return;
+      }
+    }
+    return;
+  }
+  if(!collide(current, newShape, newX, newY)) {
+    current.x = newX;
+    current.y = newY;
+    draw();
+    return true;
+  }
+  return false;
+}
+function hardDrop() {
+  current.y = getDropY();
+  step();
+}
+function getDropY() {
+  let y = current.y;
+  while(!collide(current, current.shape, current.x, y+1)) y++;
+  return y;
+}
+function step() {
+  if(!move(0,1)) {
+    merge();
+    clearLines();
+    current = spawnTetromino();
+    if(collide(current)) gameOver = true;
+  }
+  draw();
+  updateInfo();
+  if(gameOver) {
+    cancelAnimationFrame(requestId);
+    setTimeout(()=>alert("GAME OVER!\nDein Punktestand: "+score), 250);
+    return;
+  }
+  dropStart = Date.now();
+}
+function updateInfo() {
+  document.getElementById('score').innerText = score;
+  document.getElementById('level').innerText = level;
+  document.getElementById('lines').innerText = lines;
+}
+function loop() {
+  if(Date.now()-dropStart > dropInterval) {
+    step();
+  }
+  requestId = requestAnimationFrame(loop);
+}
+function restart() {
+  grid = newGrid();
+  current = spawnTetromino();
+  next = null;
+  gameOver = false;
+  dropInterval = 750;
+  dropStart = Date.now();
+  score = 0; lines = 0; level = 1;
+  updateInfo();
+  draw();
+  if(requestId) cancelAnimationFrame(requestId);
+  requestId = requestAnimationFrame(loop);
+}
+restart();
+
+// Tastatursteuerung
+document.addEventListener('keydown', e=>{
+  if(gameOver) return;
+  if(e.key=='ArrowLeft' || e.key=='a') move(-1,0);
+  else if(e.key=='ArrowRight' || e.key=='d') move(1,0);
+  else if(e.key=='ArrowDown' || e.key=='s') { move(0,1); dropStart = Date.now(); }
+  else if(e.key==' ' || e.key=='Spacebar') { hardDrop(); dropStart = Date.now(); }
+  else if(e.key=='ArrowUp' || e.key=='w') move(0,0,true);
+});
+document.getElementById('restart').onclick = restart;
+
+// Touchsteuerung für mobile
+if(isMobile) {
+  let c = document.getElementById('tetris');
+  let x0 = null, y0 = null;
+  c.addEventListener('touchstart', e=>{
+    if(e.touches.length==1) {
+      x0 = e.touches[0].clientX;
+      y0 = e.touches[0].clientY;
+    }
+  });
+  c.addEventListener('touchend', e=>{
+    if(x0===null) return;
+    let x1 = e.changedTouches[0].clientX, y1 = e.changedTouches[0].clientY;
+    let dx = x1-x0, dy = y1-y0;
+    if(Math.abs(dx)>Math.abs(dy)) {
+      if(dx>24) move(1,0); // swipe right
+      else if(dx<-24) move(-1,0); // swipe left
+    } else {
+      if(dy>28) move(0,1); // swipe down
+      else if(dy<-24) move(0,0,true); // swipe up = rotate
+    }
+    x0=y0=null;
+  });
+  // Buttons
+  document.getElementById('left').onclick = ()=>move(-1,0);
+  document.getElementById('right').onclick = ()=>move(1,0);
+  document.getElementById('down').onclick = ()=>move(0,1);
+  document.getElementById('rotate').onclick = ()=>move(0,0,true);
+  document.getElementById('drop').onclick = ()=>hardDrop();
+}
+</script>
+</body>
+</html>

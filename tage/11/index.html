@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tür 11 – Zahlenraten</title>
+    <link rel="stylesheet" href="../../style.css">
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #e2eafc 0%, #b9e4c9 100%);
+        }
+        .game-container {
+            background: #fff8f0cc;
+            border-radius: 2rem;
+            box-shadow: 0 6px 32px rgba(0,0,0,0.15);
+            padding: 2.5rem 2rem 2rem 2rem;
+            max-width: 350px;
+            width: 90vw;
+            text-align: center;
+            position: relative;
+        }
+        h2 {
+            font-size: 2rem;
+            letter-spacing: 2px;
+            margin-bottom: .5rem;
+        }
+        p {
+            margin-top: 0.3em;
+            color: #666;
+        }
+        input[type="number"] {
+            padding: 0.8em 1em;
+            border-radius: 1rem;
+            border: 1px solid #ddd;
+            font-size: 1.1rem;
+            width: 60%;
+            margin-bottom: 1.1em;
+            outline: none;
+            transition: border 0.2s;
+        }
+        input[type="number"]:focus {
+            border: 1.5px solid #349e8a;
+        }
+        button {
+            background: linear-gradient(90deg, #49c9a7 0%, #47a7f5 100%);
+            color: #fff;
+            border: none;
+            padding: 0.7em 2em;
+            border-radius: 1em;
+            font-size: 1.1rem;
+            cursor: pointer;
+            box-shadow: 0 2px 8px #0001;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            background: linear-gradient(90deg, #3ab58e 0%, #3689c9 100%);
+            box-shadow: 0 4px 12px #0002;
+        }
+        .result {
+            margin-top: 1.2em;
+            font-size: 1.3em;
+            font-weight: bold;
+            min-height: 1.5em;
+        }
+        .tries {
+            margin: 1em 0 0.5em 0;
+            color: #386641;
+        }
+        .restart-btn {
+            margin-top: 1.2em;
+            padding: 0.6em 2em;
+            background: #f7b801;
+            color: #383838;
+            font-weight: bold;
+            border: none;
+            border-radius: 1em;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 2px 6px #0002;
+            transition: background 0.2s;
+        }
+        .restart-btn:hover {
+            background: #ffd23f;
+        }
+        @media (max-width: 600px) {
+            .game-container {
+                padding: 1.5rem 0.5rem;
+            }
+            h2 {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h2>🎁 Zahlenraten!</h2>
+        <p>Errate die Zahl zwischen <span id="min">1</span> und <span id="max">100</span>.<br>Du bekommst Tipps nach jedem Versuch.</p>
+        <div class="tries" id="tries">Versuche: 0</div>
+        <form id="guessForm" autocomplete="off">
+            <input type="number" id="guessInput" min="1" max="100" required placeholder="Dein Tipp...">
+            <button type="submit">Tipp abgeben</button>
+        </form>
+        <div class="result" id="result"></div>
+        <button class="restart-btn" id="restartBtn" style="display:none;">Neu starten 🔄</button>
+    </div>
+    <script>
+        const min = 1;
+        const max = 100;
+        let secret = Math.floor(Math.random() * (max - min + 1)) + min;
+        let tries = 0;
+        let finished = false;
+
+        document.getElementById("min").textContent = min;
+        document.getElementById("max").textContent = max;
+
+        const guessForm = document.getElementById("guessForm");
+        const guessInput = document.getElementById("guessInput");
+        const resultDiv = document.getElementById("result");
+        const triesDiv = document.getElementById("tries");
+        const restartBtn = document.getElementById("restartBtn");
+
+        guessForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+            if (finished) return;
+            const val = parseInt(guessInput.value, 10);
+            if (isNaN(val) || val < min || val > max) {
+                resultDiv.textContent = `Bitte gib eine Zahl zwischen ${min} und ${max} ein!`;
+                return;
+            }
+            tries++;
+            triesDiv.textContent = `Versuche: ${tries}`;
+            if (val === secret) {
+                resultDiv.textContent = `🎉 Richtig! Die Zahl war ${secret}. Du hast ${tries} Versuch${tries > 1 ? 'e' : ''} gebraucht.`;
+                resultDiv.style.color = "#22b455";
+                finished = true;
+                restartBtn.style.display = "inline-block";
+            } else if (val < secret) {
+                resultDiv.textContent = "Zu niedrig! 🚩";
+                resultDiv.style.color = "#e67e22";
+            } else {
+                resultDiv.textContent = "Zu hoch! 🚩";
+                resultDiv.style.color = "#e67e22";
+            }
+            guessInput.value = "";
+            guessInput.focus();
+        });
+
+        restartBtn.addEventListener("click", function() {
+            secret = Math.floor(Math.random() * (max - min + 1)) + min;
+            tries = 0;
+            finished = false;
+            triesDiv.textContent = "Versuche: 0";
+            resultDiv.textContent = "";
+            guessInput.value = "";
+            guessInput.focus();
+            restartBtn.style.display = "none";
+        });
+
+        // Direktes Fokus für schnellere Spielbarkeit
+        window.onload = () => guessInput.focus();
+    </script>
+</body>
+</html>

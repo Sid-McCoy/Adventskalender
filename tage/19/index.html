@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weihnachtskarten-Generator</title>
+    <style>
+        body {
+            background: linear-gradient(120deg, #b3e0ff 0%, #e0c3fc 100%);
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: #fff6faee;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            border-radius: 2rem;
+            padding: 2rem 2.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            max-width: 380px;
+            width: 100%;
+            align-items: center;
+        }
+        h1 {
+            color: #c0392b;
+            letter-spacing: 1px;
+            margin-bottom: 0;
+            font-size: 2rem;
+            text-shadow: 1px 1px 0 #fff7, 0 2px 0 #c0392b33;
+        }
+        .preview-card {
+            width: 300px;
+            height: 200px;
+            border-radius: 1.2rem;
+            background: #f9fafc;
+            position: relative;
+            box-shadow: 0 4px 16px #b3e0ff33;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+            border: 2px solid #e0c3fc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #cardCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            width: 100%;
+        }
+        .input-section label {
+            font-size: 1rem;
+            color: #7b2ff2;
+            font-weight: 500;
+        }
+        .input-section input,
+        .input-section textarea,
+        .input-section select {
+            font-size: 1rem;
+            padding: 0.4rem 0.8rem;
+            border: 1px solid #d0d0f0;
+            border-radius: 0.6rem;
+            background: #fff;
+            resize: none;
+        }
+        .input-section select {
+            cursor: pointer;
+        }
+        .download-btn {
+            background: linear-gradient(90deg, #ffaf7b 0%, #d76d77 100%);
+            color: #fff;
+            font-weight: bold;
+            border: none;
+            border-radius: 1.1rem;
+            padding: 0.8rem 2rem;
+            font-size: 1.1rem;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 12px #e0c3fc55;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .download-btn:hover {
+            background: linear-gradient(90deg, #d76d77 0%, #ffaf7b 100%);
+            transform: scale(1.03);
+        }
+        @media (max-width: 500px) {
+            .container { padding: 1rem; }
+            .preview-card { width: 94vw; height: 60vw; min-width: 180px; min-height: 120px;}
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Weihnachtskarte</h1>
+    <div class="preview-card">
+        <canvas id="cardCanvas" width="300" height="200"></canvas>
+    </div>
+    <div class="input-section">
+        <label for="greetingText">Text:</label>
+        <textarea id="greetingText" rows="2" maxlength="110" placeholder="Frohe Weihnachten und ein glückliches neues Jahr!"></textarea>
+        <label for="motifSelect">Motiv:</label>
+        <select id="motifSelect">
+            <option value="tree">🎄 Tannenbaum</option>
+            <option value="santa">🎅 Weihnachtsmann</option>
+            <option value="snowman">⛄ Schneemann</option>
+            <option value="star">⭐ Stern</option>
+            <option value="gift">🎁 Geschenk</option>
+            <option value="deer">🦌 Rentier</option>
+            <option value="bell">🔔 Glocke</option>
+        </select>
+        <label for="nameText">Absender (optional):</label>
+        <input type="text" id="nameText" maxlength="30" placeholder="Dein Name">
+    </div>
+    <button class="download-btn" id="downloadBtn">Karte herunterladen</button>
+</div>
+
+<script>
+    const canvas = document.getElementById('cardCanvas');
+    const ctx = canvas.getContext('2d');
+    const greetingText = document.getElementById('greetingText');
+    const motifSelect = document.getElementById('motifSelect');
+    const nameText = document.getElementById('nameText');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    function drawCard() {
+        // Hintergrund
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Gradient-Hintergrund
+        let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, "#fff8dc");
+        grad.addColorStop(1, "#e0c3fc");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Schneeflocken (Zufall)
+        for(let i=0; i<18; i++) {
+            ctx.beginPath();
+            ctx.arc(
+                Math.random()*canvas.width,
+                Math.random()*canvas.height,
+                Math.random()*2+1, 0, 2*Math.PI
+            );
+            ctx.fillStyle = "#b3e0ffcc";
+            ctx.fill();
+        }
+
+        // Motiv Emoji
+        ctx.font = "50px Segoe UI Emoji, Noto Color Emoji, Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(getMotif(motifSelect.value), canvas.width/2, 62);
+
+        // Grußtext
+        ctx.font = "bold 20px Segoe UI, Arial";
+        ctx.fillStyle = "#c0392b";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        let text = greetingText.value || "Frohe Weihnachten und ein glückliches neues Jahr!";
+        wrapText(ctx, text, canvas.width/2, 110, 260, 22);
+
+        // Name
+        if(nameText.value.trim()!=="") {
+            ctx.font = "16px Segoe UI, Arial";
+            ctx.fillStyle = "#7b2ff2";
+            ctx.textAlign = "right";
+            ctx.textBaseline = "bottom";
+            ctx.fillText("- " + nameText.value.trim(), canvas.width-18, canvas.height-12);
+        }
+    }
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+        let words = text.split(' ');
+        let line = '';
+        let lines = [];
+        for(let n = 0; n < words.length; n++) {
+            let testLine = line + words[n] + ' ';
+            let metrics = ctx.measureText(testLine);
+            let testWidth = metrics.width;
+            if(testWidth > maxWidth && n > 0) {
+                lines.push(line);
+                line = words[n] + ' ';
+            } else {
+                line = testLine;
+            }
+        }
+        lines.push(line);
+        for(let i=0; i<lines.length; i++){
+            ctx.fillText(lines[i].trim(), x, y + i*lineHeight);
+        }
+    }
+
+    function getMotif(motif) {
+        switch(motif) {
+            case "tree": return "🎄";
+            case "santa": return "🎅";
+            case "snowman": return "⛄";
+            case "star": return "⭐";
+            case "gift": return "🎁";
+            case "deer": return "🦌";
+            case "bell": return "🔔";
+            default: return "🎄";
+        }
+    }
+
+    greetingText.addEventListener('input', drawCard);
+    motifSelect.addEventListener('change', drawCard);
+    nameText.addEventListener('input', drawCard);
+
+    // Initial
+    drawCard();
+
+    downloadBtn.addEventListener('click', () => {
+        const link = document.createElement('a');
+        link.download = 'Weihnachtskarte.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+</script>
+</body>
+</html>

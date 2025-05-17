@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Tür 14 – Pong (Vollbild)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        html, body {
+            margin: 0; padding: 0; height: 100%; width: 100vw;
+            background: #181825;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+        .header {
+            text-align: center;
+            color: #ffe082;
+            font-size: 2.3vw;
+            letter-spacing: 2px;
+            margin-top: 0.7em;
+            margin-bottom: 0.2em;
+            text-shadow: 0 2px 8px #0008;
+            user-select: none;
+        }
+        .pong-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+        }
+        #pongCanvas {
+            background: linear-gradient(120deg, #23263a 70%, #323459 100%);
+            border-radius: 2vw;
+            box-shadow: 0 4px 32px #111b;
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            max-width: 100vw;
+            max-height: 100vh;
+            touch-action: none;
+        }
+        .controls {
+            position: absolute;
+            top: 1vw; right: 1vw;
+            color: #b3cfff;
+            text-align: right;
+            z-index: 2;
+            font-size: 1.1vw;
+            user-select: none;
+        }
+        .button {
+            background: #2633e8;
+            color: #fff;
+            border: none;
+            padding: 0.6em 1.2em;
+            border-radius: 1vw;
+            font-size: 1.1vw;
+            margin: 4px 0 4px 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .button:hover {
+            background: #425fff;
+        }
+        @media (max-width: 700px) {
+            .header { font-size: 4.6vw; margin-top: 2vw;}
+            .controls { font-size: 2.4vw; top: 2vw;}
+            #pongCanvas { border-radius: 4vw;}
+            .button { font-size: 2.5vw; border-radius: 2vw; padding: 0.7em 2em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">🎄 Adventskalender Tür 14: Pong 🎄</div>
+    <div class="pong-container">
+        <canvas id="pongCanvas"></canvas>
+    </div>
+    <div class="controls">
+        <span id="modeInfo"></span><br>
+        <button class="button" onclick="toggleMode()">Modus wechseln (KI/2-Spieler)</button>
+        <button class="button" onclick="restartGame()">Neustart</button><br>
+        <span style="font-size:0.98em;"><b>Steuerung:</b>
+        Links: <span style="color:#ffbd39">W</span>/<span style="color:#ffbd39">S</span> &nbsp;|&nbsp; 
+        Rechts: <span style="color:#43f">⬆️</span>/<span style="color:#43f">⬇️</span>
+        </span>
+    </div>
+    <script>
+        // --- Vollbild Pong Variablen ---
+        const canvas = document.getElementById('pongCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        let leftScore = 0, rightScore = 0;
+        let upPressed = false, downPressed = false, wPressed = false, sPressed = false;
+        let isRunning = false;
+        let isSinglePlayer = true;
+        let modeInfo = document.getElementById('modeInfo');
+
+        // Dynamic resize
+        function resizeCanvas() {
+            // Immer an Fenster anpassen (Header & Controls werden "überlagert")
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Dynamische Paddle & Ball-Parameter
+        function getPaddleH() { return Math.max(height * 0.20, 70);}
+        function getPaddleW() { return Math.max(width * 0.016, 14);}
+        function getBallRadius() { return Math.max(Math.min(width, height) * 0.028, 13);}
+        function getPaddleSpeed() { return Math.max(height * 0.019, 7.5); }
+
+        let paddle = { w: getPaddleW(), h: getPaddleH(), speed: getPaddleSpeed() };
+        let leftPaddle = { x: 0, y: 0 };
+        let rightPaddle = { x: 0, y: 0 };
+        function setPaddleStart() {
+            paddle.w = getPaddleW(); paddle.h = getPaddleH(); paddle.speed = getPaddleSpeed();
+            leftPaddle.x = Math.max(width * 0.03, 18);
+            leftPaddle.y = height/2 - paddle.h/2;
+            rightPaddle.x = width - Math.max(width * 0.03, 18) - paddle.w;
+            rightPaddle.y = height/2 - paddle.h/2;
+        }
+        // Ball
+        let ball = {};
+        function resetBall(scoredLeft) {
+            ball.r = getBallRadius();
+            ball.x = width/2;
+            ball.y = Math.random() * (height-2*ball.r*3) + ball.r*3;
+            let spd = Math.max(width, height) * 0.009 + 5;
+            ball.vx = (scoredLeft ? 1 : -1) * (spd + Math.random()*1.3);
+            ball.vy = (Math.random()-0.5)*spd*1.25;
+        }
+
+        // Zeichnen
+        function drawRect(x, y, w, h, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, w, h);
+        }
+        function drawCircle(x, y, r, color) {
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+        function drawNet() {
+            ctx.save();
+            ctx.setLineDash([Math.max(width/75,10), Math.max(height/65,14)]);
+            ctx.strokeStyle = "#657ffb99";
+            ctx.lineWidth = Math.max(width/250, 3);
+            ctx.beginPath();
+            ctx.moveTo(width/2, 0);
+            ctx.lineTo(width/2, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+        function drawScores() {
+            ctx.font = "bold " + Math.max(width, height) * 0.075 + "px Segoe UI, Arial";
+            ctx.fillStyle = "#ffe082";
+            ctx.textAlign = "center";
+            ctx.globalAlpha = 0.92;
+            ctx.fillText(leftScore, width/4, height * 0.12);
+            ctx.fillText(rightScore, width*3/4, height * 0.12);
+            ctx.globalAlpha = 1.0;
+        }
+        function draw() {
+            drawRect(0,0,width,height,"#181825");
+            drawNet();
+            drawRect(leftPaddle.x, leftPaddle.y, paddle.w, paddle.h, "#ffbd39");
+            drawRect(rightPaddle.x, rightPaddle.y, paddle.w, paddle.h, "#43f");
+            drawCircle(ball.x, ball.y, ball.r, "#ffe082");
+            drawScores();
+
+            // Game over?
+            if (!isRunning) {
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold " + Math.max(width, height)*0.060 + "px Segoe UI, Arial";
+                ctx.textAlign = "center";
+                ctx.globalAlpha = 0.95;
+                ctx.fillText("Drücke SPACE oder tippe, um zu starten", width/2, height/2 + 14);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // Logik
+        function update() {
+            if (!isRunning) { draw(); return; }
+            // Paddle Steuerung
+            if (wPressed) leftPaddle.y -= paddle.speed;
+            if (sPressed) leftPaddle.y += paddle.speed;
+            if (!isSinglePlayer) {
+                if (upPressed) rightPaddle.y -= paddle.speed;
+                if (downPressed) rightPaddle.y += paddle.speed;
+            }
+            // KI
+            if (isSinglePlayer) {
+                let target = ball.y - paddle.h/2 + 24 * Math.sign(ball.vy);
+                if (rightPaddle.y + paddle.h/2 < target - 10) rightPaddle.y += paddle.speed * 0.88;
+                else if (rightPaddle.y + paddle.h/2 > target + 10) rightPaddle.y -= paddle.speed * 0.88;
+            }
+            // Boundaries
+            leftPaddle.y = Math.max(0, Math.min(height-paddle.h, leftPaddle.y));
+            rightPaddle.y = Math.max(0, Math.min(height-paddle.h, rightPaddle.y));
+            // Ball bewegen
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            // Kollisionen
+            if (ball.y < ball.r || ball.y > height-ball.r) ball.vy *= -1;
+            // Paddle links
+            if (ball.x - ball.r < leftPaddle.x + paddle.w && ball.y > leftPaddle.y && ball.y < leftPaddle.y + paddle.h) {
+                ball.vx *= -1.12;
+                ball.x = leftPaddle.x + paddle.w + ball.r;
+                let impact = ((ball.y - (leftPaddle.y + paddle.h/2)) / (paddle.h/2));
+                ball.vy += impact * paddle.speed * 0.9;
+            }
+            // Paddle rechts
+            if (ball.x + ball.r > rightPaddle.x && ball.y > rightPaddle.y && ball.y < rightPaddle.y + paddle.h) {
+                ball.vx *= -1.12;
+                ball.x = rightPaddle.x - ball.r;
+                let impact = ((ball.y - (rightPaddle.y + paddle.h/2)) / (paddle.h/2));
+                ball.vy += impact * paddle.speed * 0.9;
+            }
+            // Score
+            if (ball.x < 0) { rightScore++; resetBall(false); isRunning = false;}
+            if (ball.x > width) { leftScore++; resetBall(true); isRunning = false;}
+            draw();
+        }
+        function gameLoop() {
+            update();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Key Events
+        document.addEventListener('keydown', (e) => {
+            if (e.code === "KeyW") wPressed = true;
+            if (e.code === "KeyS") sPressed = true;
+            if (e.code === "ArrowUp") upPressed = true;
+            if (e.code === "ArrowDown") downPressed = true;
+            if ((e.code === "Space" || e.code === "Enter") && !isRunning) isRunning = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            if (e.code === "KeyW") wPressed = false;
+            if (e.code === "KeyS") sPressed = false;
+            if (e.code === "ArrowUp") upPressed = false;
+            if (e.code === "ArrowDown") downPressed = false;
+        });
+
+        // Touch Steuerung
+        let touchYLeft = null, touchYRight = null;
+        canvas.addEventListener('touchstart', function(e) {
+            if (!isRunning) isRunning = true;
+            for (let t of e.touches) {
+                if (t.clientX < width/2) touchYLeft = t.clientY;
+                else touchYRight = t.clientY;
+            }
+        });
+        canvas.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+            for (let t of e.touches) {
+                if (t.clientX < width/2 && touchYLeft !== null) {
+                    let dy = t.clientY - touchYLeft;
+                    leftPaddle.y += dy * 0.29;
+                    touchYLeft = t.clientY;
+                }
+                if (t.clientX > width/2 && touchYRight !== null && !isSinglePlayer) {
+                    let dy = t.clientY - touchYRight;
+                    rightPaddle.y += dy * 0.29;
+                    touchYRight = t.clientY;
+                }
+            }
+        }, {passive:false});
+        canvas.addEventListener('touchend', function(e) {
+            touchYLeft = null; touchYRight = null;
+        });
+
+        // Modus & Restart
+        function toggleMode() {
+            isSinglePlayer = !isSinglePlayer;
+            modeInfo.textContent = isSinglePlayer
+                ? "Modus: Einzelspieler (gegen KI)"
+                : "Modus: Zwei Spieler (WASD & Pfeiltasten)";
+            restartGame();
+        }
+        function restartGame() {
+            leftScore = 0; rightScore = 0;
+            setPaddleStart();
+            resetBall(Math.random() > 0.5);
+            isRunning = false;
+            draw();
+        }
+
+        // Layout beim ersten Laden & nach Resize
+        function fullSetup() {
+            resizeCanvas();
+            setPaddleStart();
+            resetBall(true);
+            isRunning = false;
+            draw();
+        }
+
+        // Info beim Laden
+        modeInfo.textContent = "Modus: Einzelspieler (gegen KI)";
+        fullSetup();
+        gameLoop();
+        window.addEventListener('resize', fullSetup);
+    </script>
+</body>
+</html>
